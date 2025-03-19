@@ -180,7 +180,7 @@ class Pipeline:
             
             response = requests.request(
                 method=api_call.get("method", "GET"),
-                url=f"{self.valves.KVASAR_API_URL}{api_call['endpoint']}",
+                url=f"{self.valves.kvasar_api_url}{api_call['endpoint']}",
                 headers=headers,
                 json=api_call.get("body", {})
             )
