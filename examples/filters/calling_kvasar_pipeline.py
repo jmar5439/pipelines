@@ -257,7 +257,9 @@ class Pipeline:
             # Check model compatibility
             supports_json = any(m in self.valves.openai_model.lower() 
                           for m in ['turbo-preview', '0125', '1106'])
-        
+            api_call_prompt = self._generate_api_call_prompt(command)
+            logger.info(f"Generated API call: {api_call_prompt}")
+
              # Generate structured API call
             create_args = {
                 "model": self.valves.openai_model,
