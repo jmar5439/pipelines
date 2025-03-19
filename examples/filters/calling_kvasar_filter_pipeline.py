@@ -30,12 +30,12 @@ class Pipeline(BaseModel):
         pipelines: List[str] = []
         priority: int = 0
         # Kvasar API Configuration
-        kvasar_api_url: str = "https://kvasar.herokuapp.com/api/v1/search"
-        openai_model: str = "gpt-4"
-        auth0_token_url: str = "https://dev-k97g0lsy.eu.auth0.com/oauth/token"
-        client_id: str = ""
-        client_secret: str = ""
-        audience: str = "https://kvasar.herokuapp.com/api/v1/"
+        kvasar_api_url: str 
+        openai_model: str 
+        auth0_token_url: str 
+        client_id: str 
+        client_secret: str
+        audience: str 
 
         # OpenAI Configuration
         openai_api_key: str = ""
