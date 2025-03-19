@@ -199,17 +199,19 @@ class Pipeline:
            messages: List[dict], body: dict) -> Union[str, Generator, Iterator]:
         
         self.openai_client = OpenAI(api_key=self.valves.openai_api_key) 
-        self.refresh_openapi_spec()
+        ## self.refresh_openapi_spec()
         logger.info("KVASAR pipeline started with %d endpoints loaded", 
                    len(self.openapi_spec.endpoints) if self.openapi_spec else 0)
         logger.debug(f"Processing Kvasar request: {user_message}")
+
+        dt_start = datetime.now()
         
         if body.get("title", False):
             return "(title generation disabled)"
 
         try:
             self.refresh_openapi_spec()
-            return self.execute_kvasar_operation(user_message)
+            return self.execute_kvasar_operation(user_message,dt_start)
         except Exception as e:
             error_msg = f"Kvasar API Error: {str(e)}"
             logger.error(error_msg)
