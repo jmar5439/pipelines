@@ -70,6 +70,8 @@ class Pipeline:
         )
         self.access_token = ""
         self.suppressed_logs = set()  # Initialize suppressed_logs
+        self.openapi_spec: Optional[OpenAPISpec] = None
+        self.spec_last_fetched: Optional[datetime] = None
           # Initialize OpenAI client
          # Added client initialization
     
