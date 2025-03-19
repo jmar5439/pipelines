@@ -189,7 +189,8 @@ class Pipeline:
         url = f"{self.valves.kvasar_api_url}{endpoint}"
         headers = {
             "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+             'Access-Control-Allow-Origin': '*'
         }
 
         try:
