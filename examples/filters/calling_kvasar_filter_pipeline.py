@@ -71,7 +71,6 @@ class Pipeline:
 
     async def on_startup(self):
         print(f"Kvasar pipeline started: {__name__}")
-        self.access_token = self._get_auth_token()  # Fix: Remove `self` argument
 
     async def on_shutdown(self):
         print(f"Kvasar pipeline stopped: {__name__}")
