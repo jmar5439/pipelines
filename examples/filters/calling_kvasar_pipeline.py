@@ -124,6 +124,7 @@ class Pipeline:
                     raise RuntimeError("Critical: Failed to fetch initial API spec")
                 
     def spec_needs_refresh(self) -> bool:
+        return True
         if not self.spec_last_fetched:
             return True
         delta = datetime.now() - self.spec_last_fetched
