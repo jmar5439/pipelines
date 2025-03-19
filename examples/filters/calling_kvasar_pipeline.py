@@ -55,6 +55,8 @@ class Pipeline:
     def __init__(self):
        
         self.name = "Kvasar API Pipeline 2"
+        self.spec_last_fetched: Optional[datetime] = None
+        self.openapi_spec: Optional[OpenAPISpec] = None
         self.valves = self.Valves(
             **{
                 "pipelines": ["*"],
@@ -71,8 +73,8 @@ class Pipeline:
         )
         self.access_token = ""
         self.suppressed_logs = set()  # Initialize suppressed_logs
-        self.openapi_spec: Optional[OpenAPISpec] = None
-        self.spec_last_fetched: Optional[datetime] = None
+        #self.openapi_spec: Optional[OpenAPISpec] = None
+        #self.spec_last_fetched: Optional[datetime] = None
           # Initialize OpenAI client
          # Added client initialization
     
