@@ -50,6 +50,7 @@ class Pipeline:
         openai_api_key: str = ""
         debug: bool = False
         cache_spec_minutes: int = 60
+        spec_last_fetched: datetime
 
     def __init__(self):
        
@@ -64,7 +65,7 @@ class Pipeline:
                 "audience": os.getenv("KVASAR_AUDIENCE", "https://kvasar.herokuapp.com//api/v1/"),
                 "kvasar_api_url": os.getenv("KVASAR_API_URL", "https://kvasar.herokuapp.com/api/v1/items/"),
                 "openai_model": os.getenv("OPENAI_MODEL", "gpt-4"),
-                 "openapi_spec_url": os.getenv("KVASAR_OPENAPI_URL", "https://kvasar.herokuapp.com/v3/api-docs"),
+                "openapi_spec_url": os.getenv("KVASAR_OPENAPI_URL", "https://kvasar.herokuapp.com/v3/api-docs"),
                 "debug": os.getenv("DEBUG_MODE", "false").lower() == "true",
             }
         )
