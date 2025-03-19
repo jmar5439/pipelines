@@ -182,36 +182,28 @@ class Pipeline:
             
             
             api_call = json.loads(response.choices[0].message.content)
-            logger.info(api_call)
-            ## self.rate_check(dt_start)
+            logger.info(f"Generated API call: {api_call}")
             
             # Execute API call
-            headers = {
-                "Authorization": f"Bearer {self._get_auth_token()}",
-                "Content-Type": "application/json"
-            }
-            
-            response = requests.request(
-                method=api_call.get("method", "GET"),
-                url=f"{self.valves.kvasar_api_url}{api_call['endpoint']}",
-                headers=headers,
-                json=api_call.get("body", {})
-            )
-            
-            response.raise_for_status()
-            data = response.json()
+            token = self._get_auth_token()
+            result = self._execute_api_call(api_call, token)
+             # Handle error responses
+            if "error" in result:
+                yield f"## API Error\n```\n{result['error']}\nStatus Code: {result.get('status_code', 'Unknown')}\n```\n"
+                return
 
-            # Stream formatted response
+            # Stream successful response
             yield f"## Operation Successful\n"
             yield f"**Endpoint**: {api_call['endpoint']}\n"
             yield f"**Method**: {api_call['method']}\n"
             yield "### Response Data\n```json\n"
-            yield json.dumps(data, indent=2)
+            yield json.dumps(result, indent=2)
             yield "\n```\n"
 
-        except requests.exceptions.HTTPError as e:
-            yield f"## API Error\n```\n{str(e)}\n```\n"
+        except requests.exceptions.RequestException as e:
+            yield f"## Connection Error\n```\n{str(e)}\n```\n"
         except json.JSONDecodeError:
             yield "## Error: Invalid API response format\n"
         except Exception as e:
+            logger.exception("Unexpected error in Kvasar operation")
             yield f"## Processing Error\n```\n{str(e)}\n```\n"
