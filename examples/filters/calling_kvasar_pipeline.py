@@ -254,16 +254,34 @@ class Pipeline:
     def execute_kvasar_operation(self, command: str, dt_start: datetime) -> Generator:
         """Execute Kvasar API operation with streaming support"""
         try:
+            # Check model compatibility
+            supports_json = any(m in self.valves.openai_model.lower() 
+                          for m in ['turbo-preview', '0125', '1106'])
+        
+             # Generate structured API call
+            create_args = {
+                "model": self.valves.openai_model,
+                "messages": self._generate_api_call_prompt(command),
+                "temperature": 0.1
+            }
+            if supports_json:
+                create_args["response_format"] = {"type": "json_object"}
+
             # Generate structured API call
-            response = self.openai_client.chat.completions.create(
-                model=self.valves.openai_model,
-                messages=self._generate_api_call_prompt(command),
-                temperature=0.1,
-                response_format={"type": "json_object"}
-            )
+            response = self.openai_client.chat.completions.create(**create_args)
+
+            # Handle different response formats
+            raw_response = response.choices[0].message.content
             
-            api_call = json.loads(response.choices[0].message.content)
+            try:
+                api_call = json.loads(raw_response)
+            except json.JSONDecodeError:
+            # Fallback: Try to extract JSON from markdown
+                json_str = raw_response.strip('` \n').replace('json\n', '')
+                api_call = json.loads(json_str)
+            
             logger.info(f"Generated API call: {api_call}")
+            
             
             # Validate against known endpoints
             if not self._validate_api_call(api_call):
