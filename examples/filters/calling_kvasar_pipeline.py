@@ -168,9 +168,9 @@ class Pipeline:
         """Execute Kvasar API operation with streaming support"""
         try:
             # Generate API call structure using OpenAI
-            openai.api_key = self.valves.OPENAI_API_KEY
+            openai.api_key = self.valves.openai_api_key
             response = openai.ChatCompletion.create(
-                model=self.valves.TASK_MODEL,
+                model=self.valves.openai_model,
                 messages=[{
                     "role": "system",
                     "content": "Convert this command to Kvasar API call. Respond ONLY with JSON containing: endpoint, method, body."
