@@ -65,7 +65,7 @@ class Pipeline:
                 "client_secret": os.getenv("KVASAR_CLIENT_SECRET", ""),
                 "auth0_token_url": os.getenv("KVASAR_AUTH0_URL", "https://dev-k97g0lsy.eu.auth0.com/oauth/token"),
                 "audience": os.getenv("KVASAR_AUDIENCE", "https://kvasar.herokuapp.com//api/v1/"),
-                "kvasar_api_url": os.getenv("KVASAR_API_URL", "https://kvasar.herokuapp.com/api/v1/items/"),
+                "kvasar_api_url": os.getenv("KVASAR_API_URL", "https://kvasar.herokuapp.com/api/v1/"),
                 "openai_model": os.getenv("OPENAI_MODEL", "gpt-4"),
                 "openapi_spec_url": os.getenv("KVASAR_OPENAPI_URL", "https://kvasar.herokuapp.com/v3/api-docs"),
                 "debug": os.getenv("DEBUG_MODE", "false").lower() == "true",
