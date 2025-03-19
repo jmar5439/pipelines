@@ -16,7 +16,7 @@ def get_last_assistant_message_obj(messages: List[dict]) -> dict:
     return {}
 
 # Configuration model
-class PipelineConfig(BaseModel):
+class Pipeline(BaseModel):
     class Valves(BaseModel):
         pipelines: List[str] = []
         priority: int = 0
