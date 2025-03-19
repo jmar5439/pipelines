@@ -75,6 +75,7 @@ class Pipeline(BaseModel):
 
     async def on_shutdown(self):
         print(f"Kvasar pipeline stopped: {__name__}")
+        pass
 
     async def on_valves_updated(self):
         pass
