@@ -31,7 +31,7 @@ class PipelineConfig(BaseModel):
         self.valves = self.Valves(
             **{
                 "pipelines": ["*"],
-                "openai_api_key": os.getenv("OPENAI_API_KEY", ""),
+                "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
                 "client_id": os.getenv("KVASAR_CLIENT_ID", ""),
                 "client_secret": os.getenv("KVASAR_CLIENT_SECRET", ""),
                 "auth0_token_url": os.getenv("KVASAR_AUTH0_URL", self.Valves.auth0_token_url.default),
