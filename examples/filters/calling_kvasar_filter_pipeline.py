@@ -1,3 +1,12 @@
+"""
+title: KVASAR Agile Filter
+author: JordiMarti
+date: 2025-03-19
+version: 1.0
+license: MIT
+description: This pipeline integrates KVASAR Agile for automatic items creation 
+
+"""
 import os
 import json
 import uuid
