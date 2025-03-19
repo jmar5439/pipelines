@@ -50,7 +50,7 @@ class Pipeline:
         openai_api_key: str = ""
         debug: bool = False
         cache_spec_minutes: int = 60
-        spec_last_fetched: datetime
+        # spec_last_fetched: datetime
 
     def __init__(self):
        
