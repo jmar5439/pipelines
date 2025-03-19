@@ -64,7 +64,7 @@ class Pipeline:
         self.access_token = ""
         self.suppressed_logs = set()  # Initialize suppressed_logs
           # Initialize OpenAI client
-        self.openai_client = OpenAI(api_key=self.valves.openai_api_key)  # Added client initialization
+         # Added client initialization
     
     def log(self, message: str, suppress_repeats: bool = False):
         """Logs messages to the terminal if debugging is enabled."""
@@ -144,6 +144,8 @@ class Pipeline:
     
     def pipe(self, user_message: str, model_id: str, 
            messages: List[dict], body: dict) -> Union[str, Generator, Iterator]:
+        
+        self.openai_client = OpenAI(api_key=self.valves.openai_api_key) 
         logger.debug(f"Processing Kvasar request: {user_message}")
         
         if body.get("title", False):
