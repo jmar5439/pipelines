@@ -89,6 +89,7 @@ class Pipeline:
 
     async def on_startup(self):
         print(f"Kvasar pipeline started: {__name__}")
+        await self.refresh_openapi_spec
         
         
     async def refresh_openapi_spec(self):
@@ -124,7 +125,6 @@ class Pipeline:
                     raise RuntimeError("Critical: Failed to fetch initial API spec")
                 
     def spec_needs_refresh(self) -> bool:
-        return True
         if not self.spec_last_fetched:
             return True
         delta = datetime.now() - self.spec_last_fetched
@@ -245,7 +245,7 @@ class Pipeline:
             return "(title generation disabled)"
 
         try:
-            self.refresh_openapi_spec()
+            
             return self.execute_kvasar_operation(user_message,dt_start)
         except Exception as e:
             error_msg = f"Kvasar API Error: {str(e)}"
