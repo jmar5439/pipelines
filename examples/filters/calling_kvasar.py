@@ -8,6 +8,13 @@ from typing import List, Optional, Dict, Any
 
 from utils.pipelines.main import get_last_user_message
 
+
+def get_last_assistant_message_obj(messages: List[dict]) -> dict:
+    for message in reversed(messages):
+        if message["role"] == "assistant":
+            return message
+    return {}
+
 # Configuration model
 class PipelineConfig(BaseModel):
     class Valves(BaseModel):
@@ -32,7 +39,7 @@ class PipelineConfig(BaseModel):
         self.valves = self.Valves(
             **{
                 "pipelines": ["*"],
-                "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
+                "openai_api_key": os.getenv("OPENAI_API_KEY", ""),
                 "client_id": os.getenv("KVASAR_CLIENT_ID", ""),
                 "client_secret": os.getenv("KVASAR_CLIENT_SECRET", ""),
                 "auth0_token_url": os.getenv("KVASAR_AUTH0_URL", "https://dev-k97g0lsy.eu.auth0.com/oauth/token"),
