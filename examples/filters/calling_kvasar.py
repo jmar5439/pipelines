@@ -10,7 +10,7 @@ from utils.pipelines.main import get_last_user_message
 
 # Configuration model
 class PipelineConfig(BaseModel):
-     class Valves(BaseModel):
+    class Valves(BaseModel):
         pipelines: List[str] = ["*"]
         priority: int = 0
           # Kvasar API Configuration
@@ -25,7 +25,7 @@ class PipelineConfig(BaseModel):
         openai_model: str = "gpt-4"
         openai_api_key: str = ""
 
-def __init__(self):
+    def __init__(self):
         self.type = "filter"
         self.name = "Kvasar API Pipeline"
         self.valves = self.Valves(
@@ -38,19 +38,19 @@ def __init__(self):
                 "audience": os.getenv("KVASAR_AUDIENCE", self.Valves.audience.default),
                 "kvasar_api_url": os.getenv("KVASAR_API_URL", self.Valves.kvasar_api_url.default),
                 "openai_model": os.getenv("OPENAI_MODEL", self.Valves.openai_model.default),
-            }
-        )
+                }
+           )
 
-async def on_startup(self):
+    async def on_startup(self):
         print(f"Kvasar pipeline started: {__name__}")
 
-async def on_shutdown(self):
+    async def on_shutdown(self):
         print(f"Kvasar pipeline stopped: {__name__}")
 
-async def on_valves_updated(self):
+    async def on_valves_updated(self):
         pass
 
-def _get_auth_token(self):
+    def _get_auth_token(self):
         """Retrieve authentication token from Auth0"""
         payload = {
             "client_id": self.valves.client_id,
@@ -62,7 +62,7 @@ def _get_auth_token(self):
         response.raise_for_status()
         return response.json()["access_token"]
 
-def _generate_api_call(self, prompt: str) -> dict:
+    def _generate_api_call(self, prompt: str) -> dict:
         """Convert natural language prompt to API call structure using OpenAI"""
         openai.api_key = self.valves.openai_api_key
         response = openai.ChatCompletion.create(
@@ -78,7 +78,7 @@ def _generate_api_call(self, prompt: str) -> dict:
         )
         return json.loads(response.choices[0].message.content.strip())
 
-def _execute_api_call(self, api_call: dict, token: str) -> dict:
+    def _execute_api_call(self, api_call: dict, token: str) -> dict:
         """Execute the generated API call against Kvasar API"""
         endpoint = api_call.get("endpoint", "")
         method = api_call.get("method", "GET").upper()
@@ -107,7 +107,7 @@ def _execute_api_call(self, api_call: dict, token: str) -> dict:
         except requests.exceptions.HTTPError as e:
             return {"error": str(e), "status_code": response.status_code}
 
-async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
+    async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
         """Process user input to generate and execute API calls"""
         messages = body.get("messages", [])
         user_message = get_last_user_message(messages)
@@ -140,6 +140,6 @@ async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
 
         return {**body, "messages": messages}
 
-async def outlet(self, body: dict, user: Optional[dict] = None) -> dict:
+    async def outlet(self, body: dict, user: Optional[dict] = None) -> dict:
         """Process LLM output if needed"""
         return body
