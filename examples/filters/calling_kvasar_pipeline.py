@@ -47,7 +47,7 @@ class Pipeline:
 
     def __init__(self):
        
-        self.name = "Kvasar API Pipeline"
+        self.name = "Kvasar API Pipeline 2"
         self.valves = self.Valves(
             **{
                 "pipelines": ["*"],
@@ -96,7 +96,6 @@ class Pipeline:
     
         try:
             headers = { 'content-type': "application/json" }
-            logger.info(f"payload: {payload}")
             
             response = requests.post(self.valves.auth0_token_url, json=payload,headers=headers)
             response.raise_for_status()
