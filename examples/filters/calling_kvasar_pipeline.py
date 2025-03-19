@@ -128,6 +128,20 @@ class Pipeline:
             return True
         delta = datetime.now() - self.spec_last_fetched
         return delta.total_seconds() > self.valves.cache_spec_minutes * 60
+    
+    def _format_endpoints_prompt(self) -> str:
+        """Convert OpenAPI spec to natural language prompt"""
+        if not self.openapi_spec:
+            return "No API endpoints information available"
+        
+        prompt = ["Available API endpoints:"]
+        for path, methods in self.openapi_spec.endpoints.items():
+            for method, details in methods.items():
+                prompt.append(
+                    f"- {method} {path}: {details['summary']}"
+                    f" | Parameters: {', '.join(details['required']) or 'None'}"
+                )
+        return "\n".join(prompt)
                 
     async def on_shutdown(self):
         print(f"Kvasar pipeline stopped: {__name__}")
