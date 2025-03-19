@@ -182,7 +182,8 @@ class Pipeline:
             
             
             api_call = json.loads(response.choices[0].message.content)
-            self.rate_check(dt_start)
+            logger.info(api_call)
+            ## self.rate_check(dt_start)
             
             # Execute API call
             headers = {
