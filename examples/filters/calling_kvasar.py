@@ -11,7 +11,7 @@ from utils.pipelines.main import get_last_user_message
 # Configuration model
 class PipelineConfig(BaseModel):
     class Valves(BaseModel):
-        pipelines: List[str] = ["*"]
+        pipelines: List[str] = []
         priority: int = 0
           # Kvasar API Configuration
         kvasar_api_url: str = "https://kvasar.herokuapp.com/api/v1/search"
@@ -24,6 +24,7 @@ class PipelineConfig(BaseModel):
          # OpenAI Configuration
         openai_model: str = "gpt-4"
         openai_api_key: str = ""
+        debug: bool = False
 
     def __init__(self):
         self.type = "filter"
@@ -34,12 +35,21 @@ class PipelineConfig(BaseModel):
                 "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
                 "client_id": os.getenv("KVASAR_CLIENT_ID", ""),
                 "client_secret": os.getenv("KVASAR_CLIENT_SECRET", ""),
-                "auth0_token_url": os.getenv("KVASAR_AUTH0_URL", self.Valves.auth0_token_url.default),
-                "audience": os.getenv("KVASAR_AUDIENCE", self.Valves.audience.default),
-                "kvasar_api_url": os.getenv("KVASAR_API_URL", self.Valves.kvasar_api_url.default),
-                "openai_model": os.getenv("OPENAI_MODEL", self.Valves.openai_model.default),
+                "auth0_token_url": os.getenv("KVASAR_AUTH0_URL", "https://dev-k97g0lsy.eu.auth0.com/oauth/token"),
+                "audience": os.getenv("KVASAR_AUDIENCE", "https://kvasar.herokuapp.com/api/v1/"),
+                "kvasar_api_url": os.getenv("KVASAR_API_URL", "https://kvasar.herokuapp.com/api/v1/search"),
+                "openai_model": os.getenv("OPENAI_MODEL", "gpt-4"),
+                "debug": os.getenv("DEBUG_MODE", "false").lower() == "true",
                 }
            )
+    def log(self, message: str, suppress_repeats: bool = False):
+        """Logs messages to the terminal if debugging is enabled."""
+        if self.valves.debug:
+            if suppress_repeats:
+                if message in self.suppressed_logs:
+                    return
+                self.suppressed_logs.add(message)
+            print(f"[DEBUG] {message}")
 
     async def on_startup(self):
         print(f"Kvasar pipeline started: {__name__}")
