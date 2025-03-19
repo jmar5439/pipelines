@@ -20,7 +20,7 @@ class PipelineConfig(BaseModel):
     class Valves(BaseModel):
         pipelines: List[str] = []
         priority: int = 0
-          # Kvasar API Configuration
+        # Kvasar API Configuration
         kvasar_api_url: str = "https://kvasar.herokuapp.com/api/v1/search"
         openai_model: str = "gpt-4"
         auth0_token_url: str = "https://dev-k97g0lsy.eu.auth0.com/oauth/token"
@@ -28,8 +28,7 @@ class PipelineConfig(BaseModel):
         client_secret: str = ""
         audience: str = "https://kvasar.herokuapp.com/api/v1/"
 
-         # OpenAI Configuration
-        openai_model: str = "gpt-4"
+        # OpenAI Configuration
         openai_api_key: str = ""
         debug: bool = False
 
@@ -47,10 +46,11 @@ class PipelineConfig(BaseModel):
                 "kvasar_api_url": os.getenv("KVASAR_API_URL", "https://kvasar.herokuapp.com/api/v1/search"),
                 "openai_model": os.getenv("OPENAI_MODEL", "gpt-4"),
                 "debug": os.getenv("DEBUG_MODE", "false").lower() == "true",
-                }
-           )
-        self.access_token=""
-        
+            }
+        )
+        self.access_token = ""
+        self.suppressed_logs = set()  # Initialize suppressed_logs
+    
     def log(self, message: str, suppress_repeats: bool = False):
         """Logs messages to the terminal if debugging is enabled."""
         if self.valves.debug:
@@ -62,7 +62,7 @@ class PipelineConfig(BaseModel):
 
     async def on_startup(self):
         print(f"Kvasar pipeline started: {__name__}")
-        self.access_token=self._get_auth_token(self)
+        self.access_token = self._get_auth_token()  # Fix: Remove `self` argument
 
     async def on_shutdown(self):
         print(f"Kvasar pipeline stopped: {__name__}")
@@ -103,7 +103,7 @@ class PipelineConfig(BaseModel):
         endpoint = api_call.get("endpoint", "")
         method = api_call.get("method", "GET").upper()
         body = api_call.get("body", {})
-        
+
         url = f"{self.valves.kvasar_api_url}{endpoint}"
         headers = {
             "Authorization": f"Bearer {token}",
@@ -125,7 +125,7 @@ class PipelineConfig(BaseModel):
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as e:
-            return {"error": str(e), "status_code": response.status_code}
+            return {"error": str(e), "status_code": response.status_code} if response else {"error": str(e)}
 
     async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
         """Process user input to generate and execute API calls"""
@@ -142,7 +142,7 @@ class PipelineConfig(BaseModel):
             token = self._get_auth_token()
             # Execute API call
             api_response = self._execute_api_call(api_call, token)
-            
+
             # Format API response for LLM context
             api_context = (
                 f"API Request: {json.dumps(api_call, indent=2)}\n"
