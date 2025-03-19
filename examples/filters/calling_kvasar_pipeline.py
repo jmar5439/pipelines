@@ -46,7 +46,7 @@ class Pipeline:
         debug: bool = False
 
     def __init__(self):
-        self.type = "filter"
+       
         self.name = "Kvasar API Pipeline"
         self.valves = self.Valves(
             **{
