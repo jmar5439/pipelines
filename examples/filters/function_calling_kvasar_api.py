@@ -5,8 +5,10 @@ import openai
 from typing import Literal, List, Optional
 from blueprints.function_calling_blueprint import Pipeline as FunctionCallingBlueprint
 
+
 class Pipeline(FunctionCallingBlueprint):
     class Valves(FunctionCallingBlueprint.Valves):
+        # Add your custom parameters here
         # Kvasar API Configuration
         kvasar_api_url: str = "https://kvasar.herokuapp.com/api/v1"
         auth0_token_url: str = "https://dev-k97g0lsy.eu.auth0.com/oauth/token"
@@ -105,7 +107,7 @@ class Pipeline(FunctionCallingBlueprint):
         self.valves = self.Valves(
             **{
                 **self.valves.model_dump(),
-                "pipelines": ["*"],
+                "pipelines": ["*"],  # Connect to all pipelines
                 "openai_api_key": os.getenv("OPENAI_API_KEY", ""),
                 "client_id": os.getenv("KVASAR_CLIENT_ID", ""),
                 "client_secret": os.getenv("KVASAR_CLIENT_SECRET", ""),
@@ -113,6 +115,6 @@ class Pipeline(FunctionCallingBlueprint):
                 "audience": os.getenv("KVASAR_AUDIENCE", self.Valves.audience.default),
                 "kvasar_api_url": os.getenv("KVASAR_API_URL", self.Valves.kvasar_api_url.default),
                 "openai_model": os.getenv("OPENAI_MODEL", self.Valves.openai_model.default),
-            }
+            },
         )
         self.tools = self.Tools(self)
