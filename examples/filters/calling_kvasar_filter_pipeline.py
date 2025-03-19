@@ -137,9 +137,15 @@ class Pipeline(BaseModel):
             return {"error": str(e), "status_code": response.status_code} if response else {"error": str(e)}
 
     async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
-        """Process user input to generate and execute API calls"""
-        messages = body.get("messages", [])
+        print(f"inlet:{__name__}")
+
+        messages = body["messages"]
         user_message = get_last_user_message(messages)
+
+        #print(f"User message: {user_message}")
+        #"""Process user input to generate and execute API calls"""
+        #messages = body.get("messages", [])
+        #user_message = get_last_user_message(messages)
 
         if not user_message:
             return body
