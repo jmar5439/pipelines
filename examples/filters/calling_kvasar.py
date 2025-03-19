@@ -55,7 +55,7 @@ class PipelineConfig(BaseModel):
 
     async def on_startup(self):
         print(f"Kvasar pipeline started: {__name__}")
-        # self.access_token=self._get_auth_token(self)
+        self.access_token=self._get_auth_token(self)
 
     async def on_shutdown(self):
         print(f"Kvasar pipeline stopped: {__name__}")
