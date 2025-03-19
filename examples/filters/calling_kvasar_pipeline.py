@@ -89,7 +89,7 @@ class Pipeline:
 
     async def on_startup(self):
         print(f"Kvasar pipeline started: {__name__}")
-        await self.refresh_openapi_spec
+        await self.refresh_openapi_spec()
         
         
     async def refresh_openapi_spec(self):
