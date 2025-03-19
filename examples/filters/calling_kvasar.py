@@ -42,6 +42,7 @@ class PipelineConfig(BaseModel):
                 "debug": os.getenv("DEBUG_MODE", "false").lower() == "true",
                 }
            )
+        self.access_token=""
         
     def log(self, message: str, suppress_repeats: bool = False):
         """Logs messages to the terminal if debugging is enabled."""
@@ -54,6 +55,7 @@ class PipelineConfig(BaseModel):
 
     async def on_startup(self):
         print(f"Kvasar pipeline started: {__name__}")
+        # self.access_token=self._get_auth_token(self)
 
     async def on_shutdown(self):
         print(f"Kvasar pipeline stopped: {__name__}")
