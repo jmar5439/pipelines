@@ -17,6 +17,7 @@ class Pipeline(FunctionCallingBlueprint):
         # OpenAI Configuration
         openai_model: str = "gpt-4"
         openai_api_key: str = ""
+        pass
 
     class Tools:
         def __init__(self, pipeline) -> None:
