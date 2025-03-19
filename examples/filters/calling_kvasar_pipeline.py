@@ -10,7 +10,7 @@ description: This pipeline integrates KVASAR Agile for automatic items creation
 import os
 import json
 import uuid
-import openai
+from openai import OpenAI  # Changed import
 import requests
 from pydantic import BaseModel
 from datetime import datetime
@@ -95,21 +95,7 @@ class Pipeline:
         response.raise_for_status()
         return response.json()["access_token"]
 
-    def _generate_api_call(self, prompt: str) -> dict:
-        """Convert natural language prompt to API call structure using OpenAI"""
-        openai.api_key = self.valves.openai_api_key
-        response = openai.ChatCompletion.create(
-            model=self.valves.openai_model,
-            messages=[{
-                "role": "system",
-                "content": "Convert user requests to Kvasar API calls. Respond ONLY with JSON containing: endpoint, method, body."
-            }, {
-                "role": "user", 
-                "content": prompt
-            }],
-            temperature=0.3,
-        )
-        return json.loads(response.choices[0].message.content.strip())
+  
 
     def _execute_api_call(self, api_call: dict, token: str) -> dict:
         """Execute the generated API call against Kvasar API"""
@@ -168,8 +154,8 @@ class Pipeline:
         """Execute Kvasar API operation with streaming support"""
         try:
             # Generate API call structure using OpenAI
-            openai.api_key = self.valves.openai_api_key
-            response = openai.ChatCompletion.create(
+              # Generate API call structure using OpenAI
+            response = self.openai_client.chat.completions.create(  # Updated API call
                 model=self.valves.openai_model,
                 messages=[{
                     "role": "system",
@@ -179,6 +165,7 @@ class Pipeline:
                     "content": command
                 }]
             )
+            
             
             api_call = json.loads(response.choices[0].message.content)
             self.rate_check(dt_start)
