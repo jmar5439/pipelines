@@ -89,9 +89,7 @@ class Pipeline:
 
     async def on_startup(self):
         print(f"Kvasar pipeline started: {__name__}")
-        await self.refresh_openapi_spec()
-        logger.info("KVASAR pipeline started with %d endpoints loaded", 
-                   len(self.openapi_spec.endpoints) if self.openapi_spec else 0)
+        
         
     async def refresh_openapi_spec(self):
         """Fetch and cache OpenAPI specification with expiration"""
@@ -201,6 +199,9 @@ class Pipeline:
            messages: List[dict], body: dict) -> Union[str, Generator, Iterator]:
         
         self.openai_client = OpenAI(api_key=self.valves.openai_api_key) 
+        self.refresh_openapi_spec()
+        logger.info("KVASAR pipeline started with %d endpoints loaded", 
+                   len(self.openapi_spec.endpoints) if self.openapi_spec else 0)
         logger.debug(f"Processing Kvasar request: {user_message}")
         
         if body.get("title", False):
