@@ -194,7 +194,27 @@ class Pipeline:
         except requests.exceptions.HTTPError as e:
             return {"error": str(e), "status_code": response.status_code} if response else {"error": str(e)}
 
-    
+    def _generate_api_call_prompt(self, user_command: str) -> List[dict]:
+        base_prompt = {
+            "role": "system",
+            "content": f"""You are an API call generator. Convert user requests to Kvasar API calls.
+
+{self._format_endpoints_prompt()}
+
+Respond ONLY with JSON containing:
+- endpoint: Full path with parameters (e.g., /items/{{id}})
+- method: HTTP verb
+- body: JSON object for request body (if needed)
+- parameters: Path/query parameters (key-value pairs)
+
+Example:
+{{ "endpoint": "/items/123", "method": "GET", "body": {{}}, "parameters": {{}} }}
+"""
+        }
+        return [
+            base_prompt,
+            {"role": "user", "content": user_command}
+        ]
     def pipe(self, user_message: str, model_id: str, 
            messages: List[dict], body: dict) -> Union[str, Generator, Iterator]:
         
