@@ -92,10 +92,23 @@ class Pipeline:
             "client_secret": self.valves.client_secret,
             "audience": self.valves.audience,
             "grant_type": "client_credentials"
-        }
-        response = requests.post(self.valves.auth0_token_url, json=payload)
-        response.raise_for_status()
-        return response.json()["access_token"]
+          }
+    
+        try:
+            response = requests.post(self.valves.auth0_token_url, json=payload)
+            response.raise_for_status()
+            token = response.json().get("access_token")
+        
+            if not token:
+                logger.error("Auth0 response does not contain an access token: %s", response.json())
+                raise ValueError("Failed to retrieve access token")
+        
+            logger.debug("Successfully retrieved access token")
+            #return token
+
+        except requests.exceptions.RequestException as e:
+            logger.error("Failed to get authentication token: %s", e, exc_info=True)
+        raise
 
   
 
