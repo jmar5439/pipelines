@@ -104,7 +104,7 @@ class Pipeline:
                 raise ValueError("Failed to retrieve access token")
         
             logger.debug("Successfully retrieved access token")
-            #return token
+            return token
 
         except requests.exceptions.RequestException as e:
             logger.error("Failed to get authentication token: %s", e, exc_info=True)
@@ -169,7 +169,6 @@ class Pipeline:
         """Execute Kvasar API operation with streaming support"""
         try:
             # Generate API call structure using OpenAI
-              # Generate API call structure using OpenAI
             response = self.openai_client.chat.completions.create(  # Updated API call
                 model=self.valves.openai_model,
                 messages=[{
