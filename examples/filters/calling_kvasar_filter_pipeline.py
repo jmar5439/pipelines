@@ -13,10 +13,14 @@ import uuid
 import openai
 import requests
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from datetime import datetime
+from typing import List, Optional,  Union,Generator, Iterator,Dict, Any
 
 from utils.pipelines.main import get_last_user_message
 
+from logging import getLogger
+logger = getLogger(__name__)
+logger.setLevel("DEBUG")
 
 def get_last_assistant_message_obj(messages: List[dict]) -> dict:
     for message in reversed(messages):
@@ -136,45 +140,76 @@ class Pipeline:
         except requests.exceptions.HTTPError as e:
             return {"error": str(e), "status_code": response.status_code} if response else {"error": str(e)}
 
-    async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
-        print(f"inlet:{__name__}")
+    
+    def pipe(self, user_message: str, model_id: str, 
+           messages: List[dict], body: dict) -> Union[str, Generator, Iterator]:
+        logger.debug(f"Processing Kvasar request: {user_message}")
+        
+        if body.get("title", False):
+            return "(title generation disabled)"
 
-        messages = body["messages"]
-        user_message = get_last_user_message(messages)
-
-        #print(f"User message: {user_message}")
-        #"""Process user input to generate and execute API calls"""
-        #messages = body.get("messages", [])
-        #user_message = get_last_user_message(messages)
-
-        if not user_message:
-            return body
+        streaming = body.get("stream", False)
+        context = ""
+        dt_start = datetime.now()
 
         try:
-            # Generate API call structure
-            api_call = self._generate_api_call(user_message)
-            # Get authentication token
-            token = self._get_auth_token()
-            # Execute API call
-            api_response = self._execute_api_call(api_call, token)
-
-            # Format API response for LLM context
-            api_context = (
-                f"API Request: {json.dumps(api_call, indent=2)}\n"
-                f"API Response: {json.dumps(api_response, indent=2)}"
-            )
+            if streaming:
+                yield from self.execute_kvasar_operation(user_message, dt_start)
+            else:
+                for chunk in self.execute_kvasar_operation(user_message, dt_start):
+                    context += chunk
+                return context
         except Exception as e:
-            api_context = f"API Error: {str(e)}"
+            error_msg = f"Kvasar API Error: {str(e)}"
+            logger.error(error_msg)
+            return error_msg
 
-        # Append API context as system message
-        messages.append({
-            "role": "system",
-            "content": api_context,
-            "hidden": True  # Optional: Hide from user-facing chat
-        })
+    def execute_kvasar_operation(self, command: str, dt_start: datetime) -> Generator:
+        """Execute Kvasar API operation with streaming support"""
+        try:
+            # Generate API call structure using OpenAI
+            openai.api_key = self.valves.OPENAI_API_KEY
+            response = openai.ChatCompletion.create(
+                model=self.valves.TASK_MODEL,
+                messages=[{
+                    "role": "system",
+                    "content": "Convert this command to Kvasar API call. Respond ONLY with JSON containing: endpoint, method, body."
+                }, {
+                    "role": "user", 
+                    "content": command
+                }]
+            )
+            
+            api_call = json.loads(response.choices[0].message.content)
+            self.rate_check(dt_start)
+            
+            # Execute API call
+            headers = {
+                "Authorization": f"Bearer {self._get_auth_token()}",
+                "Content-Type": "application/json"
+            }
+            
+            response = requests.request(
+                method=api_call.get("method", "GET"),
+                url=f"{self.valves.KVASAR_API_URL}{api_call['endpoint']}",
+                headers=headers,
+                json=api_call.get("body", {})
+            )
+            
+            response.raise_for_status()
+            data = response.json()
 
-        return {**body, "messages": messages}
+            # Stream formatted response
+            yield f"## Operation Successful\n"
+            yield f"**Endpoint**: {api_call['endpoint']}\n"
+            yield f"**Method**: {api_call['method']}\n"
+            yield "### Response Data\n```json\n"
+            yield json.dumps(data, indent=2)
+            yield "\n```\n"
 
-    async def outlet(self, body: dict, user: Optional[dict] = None) -> dict:
-        """Process LLM output if needed"""
-        return body
+        except requests.exceptions.HTTPError as e:
+            yield f"## API Error\n```\n{str(e)}\n```\n"
+        except json.JSONDecodeError:
+            yield "## Error: Invalid API response format\n"
+        except Exception as e:
+            yield f"## Processing Error\n```\n{str(e)}\n```\n"
