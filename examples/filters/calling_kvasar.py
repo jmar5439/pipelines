@@ -42,6 +42,7 @@ class PipelineConfig(BaseModel):
                 "debug": os.getenv("DEBUG_MODE", "false").lower() == "true",
                 }
            )
+        
     def log(self, message: str, suppress_repeats: bool = False):
         """Logs messages to the terminal if debugging is enabled."""
         if self.valves.debug:
