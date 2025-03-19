@@ -96,6 +96,7 @@ class Pipeline:
     
         try:
             headers = { 'content-type': "application/json" }
+            logger.info(payload)
             response = requests.post(self.valves.auth0_token_url, json=payload,headers=headers)
             response.raise_for_status()
             token = response.json().get("access_token")
