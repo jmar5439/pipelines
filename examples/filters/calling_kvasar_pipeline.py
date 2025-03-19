@@ -28,11 +28,16 @@ def get_last_assistant_message_obj(messages: List[dict]) -> dict:
             return message
     return {}
 
+class OpenAPISpec(BaseModel):
+    endpoints: Dict[str, Dict[str, Dict]]
+    base_url: str
+
 # Configuration model
 class Pipeline:
     class Valves(BaseModel):
         pipelines: List[str] = []
         priority: int = 0
+        openapi_spec_url: str = "https://kvasar.herokuapp.com/v3/api-docs"
         # Kvasar API Configuration
         kvasar_api_url: str 
         openai_model: str 
@@ -44,6 +49,7 @@ class Pipeline:
         # OpenAI Configuration
         openai_api_key: str = ""
         debug: bool = False
+        cache_spec_minutes: int = 60
 
     def __init__(self):
        
@@ -58,6 +64,7 @@ class Pipeline:
                 "audience": os.getenv("KVASAR_AUDIENCE", "https://kvasar.herokuapp.com//api/v1/"),
                 "kvasar_api_url": os.getenv("KVASAR_API_URL", "https://kvasar.herokuapp.com/api/v1/items/"),
                 "openai_model": os.getenv("OPENAI_MODEL", "gpt-4"),
+                 "openapi_spec_url": os.getenv("KVASAR_OPENAPI_URL", "https://kvasar.herokuapp.com/v3/api-docs"),
                 "debug": os.getenv("DEBUG_MODE", "false").lower() == "true",
             }
         )
@@ -77,7 +84,48 @@ class Pipeline:
 
     async def on_startup(self):
         print(f"Kvasar pipeline started: {__name__}")
+        await self.refresh_openapi_spec()
+        logger.info("KVASAR pipeline started with %d endpoints loaded", 
+                   len(self.openapi_spec.endpoints) if self.openapi_spec else 0)
+        
+    async def refresh_openapi_spec(self):
+        """Fetch and cache OpenAPI specification with expiration"""
+        if self.spec_needs_refresh():
+            try:
+                response = requests.get(self.valves.openapi_spec_url, timeout=10)
+                response.raise_for_status()
+                spec_data = response.json()
+                
+                endpoints = {}
+                for path, methods in spec_data.get('paths', {}).items():
+                    endpoints[path] = {
+                        method.upper(): {
+                            'summary': details.get('summary', ''),
+                            'parameters': details.get('parameters', []),
+                            'required': [p['name'] for p in details.get('parameters', []) 
+                                       if p.get('required', False)]
+                        }
+                        for method, details in methods.items()
+                    }
 
+                self.openapi_spec = OpenAPISpec(
+                    endpoints=endpoints,
+                    base_url=spec_data.get('servers', [{}])[0].get('url', self.valves.kvasar_api_url)
+                )
+                self.spec_last_fetched = datetime.now()
+                logger.info("Successfully updated OpenAPI spec with %d endpoints", len(endpoints))
+                
+            except Exception as e:
+                logger.error("Failed to refresh OpenAPI spec: %s", str(e))
+                if not self.openapi_spec:
+                    raise RuntimeError("Critical: Failed to fetch initial API spec")
+                
+    def spec_needs_refresh(self) -> bool:
+        if not self.spec_last_fetched:
+            return True
+        delta = datetime.now() - self.spec_last_fetched
+        return delta.total_seconds() > self.valves.cache_spec_minutes * 60
+                
     async def on_shutdown(self):
         print(f"Kvasar pipeline stopped: {__name__}")
         pass
@@ -153,17 +201,9 @@ class Pipeline:
         if body.get("title", False):
             return "(title generation disabled)"
 
-        streaming = body.get("stream", False)
-        context = ""
-        dt_start = datetime.now()
-
         try:
-            if streaming:
-                yield from self.execute_kvasar_operation(user_message, dt_start)
-            else:
-                for chunk in self.execute_kvasar_operation(user_message, dt_start):
-                    context += chunk
-                return context
+            self.refresh_openapi_spec()
+            return self.execute_kvasar_operation(user_message)
         except Exception as e:
             error_msg = f"Kvasar API Error: {str(e)}"
             logger.error(error_msg)
@@ -172,21 +212,22 @@ class Pipeline:
     def execute_kvasar_operation(self, command: str, dt_start: datetime) -> Generator:
         """Execute Kvasar API operation with streaming support"""
         try:
-            # Generate API call structure using OpenAI
-            response = self.openai_client.chat.completions.create(  # Updated API call
+            # Generate structured API call
+            response = self.openai_client.chat.completions.create(
                 model=self.valves.openai_model,
-                messages=[{
-                    "role": "system",
-                    "content": "Convert this command to Kvasar API call. Respond ONLY with JSON containing: endpoint, method, body."
-                }, {
-                    "role": "user", 
-                    "content": command
-                }]
+                messages=self._generate_api_call_prompt(command),
+                temperature=0.1,
+                response_format={"type": "json_object"}
             )
-            
             
             api_call = json.loads(response.choices[0].message.content)
             logger.info(f"Generated API call: {api_call}")
+            
+            # Validate against known endpoints
+            if not self._validate_api_call(api_call):
+                yield "Error: Invalid API call structure"
+                return
+
             
             # Execute API call
             token = self._get_auth_token()
@@ -196,14 +237,9 @@ class Pipeline:
                 yield f"## API Error\n```\n{result['error']}\nStatus Code: {result.get('status_code', 'Unknown')}\n```\n"
                 return
 
-            # Stream successful response
-            yield f"## Operation Successful\n"
-            yield f"**Endpoint**: {api_call['endpoint']}\n"
-            yield f"**Method**: {api_call['method']}\n"
-            yield "### Response Data\n```json\n"
-            yield json.dumps(result, indent=2)
-            yield "\n```\n"
+            yield from self._format_response(api_call, result)
 
+           
         except requests.exceptions.RequestException as e:
             yield f"## Connection Error\n```\n{str(e)}\n```\n"
         except json.JSONDecodeError:
@@ -211,3 +247,49 @@ class Pipeline:
         except Exception as e:
             logger.exception("Unexpected error in Kvasar operation")
             yield f"## Processing Error\n```\n{str(e)}\n```\n"
+
+    def _path_matches_template(self, actual_path: str, template_path: str) -> bool:
+        # Simple path parameter matching (e.g., /items/{id} vs /items/123)
+        actual_parts = actual_path.strip('/').split('/')
+        template_parts = template_path.strip('/').split('/')
+        
+        if len(actual_parts) != len(template_parts):
+            return False
+            
+        for a, t in zip(actual_parts, template_parts):
+            if t.startswith('{') and t.endswith('}'):
+                continue
+            if a != t:
+                return False
+        return True
+
+    def _format_response(self, api_call: dict, result: dict) -> Generator:
+        """Stream formatted response to client"""
+        yield f"## Operation Successful\n"
+        yield f"**Endpoint**: {api_call['endpoint']}\n"
+        yield f"**Method**: {api_call['method']}\n"
+        
+        if api_call.get('parameters'):
+            yield "### Parameters\n```json\n"
+            yield json.dumps(api_call['parameters'], indent=2)
+            yield "\n```\n"
+            
+        yield "### Response Data\n```json\n"
+        yield json.dumps(result, indent=2)
+        yield "\n```\n"
+
+    def _validate_api_call(self, api_call: dict) -> bool:
+        """Validate generated call against OpenAPI spec"""
+        if not self.openapi_spec:
+            return True  # Skip validation if no spec available
+            
+        path = api_call.get('endpoint', '').split('?')[0]
+        method = api_call.get('method', '').upper()
+        
+        # Find matching path template
+        for spec_path in self.openapi_spec.endpoints.keys():
+            if self._path_matches_template(path, spec_path):
+                if method in self.openapi_spec.endpoints[spec_path]:
+                    return True
+        logger.warning("Validation failed for %s %s", method, path)
+        return False
