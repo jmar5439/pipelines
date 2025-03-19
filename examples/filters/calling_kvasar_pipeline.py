@@ -213,17 +213,17 @@ class Pipeline:
             "role": "system",
             "content": f"""You are an API call generator. Convert user requests to Kvasar API calls.
 
-{self._format_endpoints_prompt()}
+        {self._format_endpoints_prompt()}
 
-Respond ONLY with JSON containing:
-- endpoint: Full path with parameters (e.g., /items/{{id}})
-- method: HTTP verb
-- body: JSON object for request body (if needed)
-- parameters: Path/query parameters (key-value pairs)
+        Respond ONLY with JSON containing:
+        - endpoint: Full path with parameters (e.g., /items/{{id}})
+        - method: HTTP verb
+        - body: JSON object for request body (if needed)
+        - parameters: Path/query parameters (key-value pairs)
 
-Example:
-{{ "endpoint": "/items/123", "method": "GET", "body": {{}}, "parameters": {{}} }}
-"""
+        Example:
+        {{ "endpoint": "/items/123", "method": "GET", "body": {{}}, "parameters": {{}} }}
+        """
         }
         return [
             base_prompt,
