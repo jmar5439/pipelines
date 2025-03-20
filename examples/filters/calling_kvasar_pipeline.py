@@ -294,7 +294,8 @@ class Pipeline:
 
             
             # Execute API call
-            token = self._get_auth_token()
+            token = os.environ.get("OAUTH_ACCESS_TOKEN")
+            # token = self._get_auth_token()
             result = self._execute_api_call(api_call, token)
              # Handle error responses
             if "error" in result:
