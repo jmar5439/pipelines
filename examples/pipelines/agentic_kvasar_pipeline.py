@@ -13,11 +13,11 @@ import uuid
 import requests
 from datetime import datetime
 from typing import List, Optional, Union, Generator, Iterator, Dict, Any
-
+from langgraph.graph import END 
 from pydantic import BaseModel
 from openai import OpenAI  # Changed import
 
-from utils.pipelines.main import get_last_user_message
+# from utils.pipelines.main import get_last_user_message
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -40,6 +40,21 @@ class HashableState(dict):
     def __hash__(self):
         # Convert the dictionary items to a frozenset (which is hashable)
         return hash(frozenset(self.items()))
+
+# Define a proper state schema for LangGraph that is immutable (hashable)
+class PipelineState(BaseModel):
+    command: str
+    api_call: Optional[dict] = None
+    result: Optional[dict] = None
+    error: Optional[str] = None
+    output: Optional[str] = None
+    next_state: Optional[str] = None
+
+    model_config = {
+        "frozen": True,  # Replaces the old Config class
+        "extra": "forbid",
+        "validate_assignment": True
+    }
 
 # Configuration model
 class Pipeline:
@@ -232,12 +247,12 @@ Example:
     # LangGraph State Machine Nodes
     # ----------------------------
 
-    def node_generate_api_call(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    def node_generate_api_call(self, state: PipelineState) -> PipelineState:  # Changed type hint
         """
         State 1: Generate API Call.
         Uses OpenAI to generate a structured API call from the user command.
         """
-        command = state.get("command")
+        command = state.command  # Direct attribute access
         self.log(f"Generating API call for command: {command}")
         try:
             create_args = {
@@ -251,7 +266,7 @@ Example:
             response = self.openai_client.chat.completions.create(**create_args)
             raw_response = response.choices[0].message.content
         
-            # Check if raw_response is already a dict
+            # Parse response
             if isinstance(raw_response, dict):
                 api_call = raw_response
             else:
@@ -262,83 +277,107 @@ Example:
                     api_call = json.loads(json_str)
                 
             self.log(f"Generated API call: {api_call}")
-            state["api_call"] = api_call
-            state["next_state"] = "execute_api_call"
+            return PipelineState(
+                **state.model_dump(exclude={'api_call', 'error', 'next_state'}), 
+                api_call=api_call,
+                next_state="execute_api_call"
+            )
         except Exception as e:
-            state["error"] = f"Error in API call generation: {str(e)}"
-            state["next_state"] = "handle_error"
-        return state
+            return PipelineState(
+                **state.model_dump(exclude={'error', 'next_state'}),
+                error=f"API generation error: {str(e)}",
+                next_state="handle_error"
+            )
 
-
-    def node_execute_api_call(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    def node_execute_api_call(self, state: PipelineState) -> PipelineState:  # Changed type hint
         """
         State 2: Execute API Call.
         Executes the API call and stores the result.
         """
         self.log("Executing API call")
-        api_call = state.get("api_call")
+        api_call = state.api_call  # Direct attribute access
         if not api_call:
-            state["error"] = "No API call found."
-            state["next_state"] = "handle_error"
-            return state
+            return PipelineState(
+                 **state.model_dump(exclude={'error', 'next_state'}),
+                error="No API call generated",
+                next_state="handle_error"
+            )
 
         # Validate API call against the OpenAPI spec
         if not self._validate_api_call(api_call):
-            state["error"] = "Invalid API call structure."
-            state["next_state"] = "handle_error"
-            return state
+            return PipelineState(
+                 **state.model_dump(exclude={'output', 'next_state'}),
+                error="Invalid API call structure",
+                next_state="handle_error"
+            )
 
         try:
-            token = os.environ.get("OAUTH_ACCESS_TOKEN")  # Alternatively: self._get_auth_token()
+            token = os.environ.get("OAUTH_ACCESS_TOKEN")
             result = self._execute_api_call(api_call, token)
             if "error" in result:
-                state["error"] = f"API Error: {result['error']} (Status: {result.get('status_code', 'Unknown')})"
-                state["next_state"] = "handle_error"
-            else:
-                state["result"] = result
-                state["next_state"] = "format_response"
+                return PipelineState(
+                     **state.model_dump(exclude={'error', 'next_state'}),
+                    error=f"API Error: {result['error']}",
+                    next_state="handle_error"
+                )
+            return PipelineState(
+                **state.model_dump(exclude={'output', 'next_state'}),
+                result=result,
+                next_state="format_response"
+            )
         except Exception as e:
-            state["error"] = f"Error during API execution: {str(e)}"
-            state["next_state"] = "handle_error"
-        return state
+            return PipelineState(
+                 **state.model_dump(exclude={'error', 'next_state'}),
+                error=f"Execution error: {str(e)}",
+                next_state="handle_error"
+            )
 
-    def node_format_response(self, state: Dict[str, Any]) -> Dict[str, Any]:
+
+    def node_format_response(self, state: PipelineState) -> PipelineState:  # Changed type hint
         """
         State 3: Format Response.
         Formats the API response into a human-readable output.
         """
         self.log("Formatting API response")
         try:
-            api_call = state.get("api_call", {})
-            result = state.get("result", {})
-            formatted = []
-            formatted.append("## Operation Successful")
-            formatted.append(f"**Endpoint**: {api_call.get('endpoint', '')}")
-            formatted.append(f"**Method**: {api_call.get('method', '')}")
-            if api_call.get('parameters'):
+            formatted = [
+                "## Operation Successful",
+                f"**Endpoint**: {state.api_call.endpoint}",  # Direct attribute access
+                f"**Method**: {state.api_call.method}"       # Direct attribute access
+            ]
+            
+            if state.api_call.parameters:
                 formatted.append("### Parameters\n```json")
-                formatted.append(json.dumps(api_call.get('parameters'), indent=2))
+                formatted.append(json.dumps(state.api_call.parameters, indent=2))
                 formatted.append("```")
+                
             formatted.append("### Response Data\n```json")
-            formatted.append(json.dumps(result, indent=2))
+            formatted.append(json.dumps(state.result, indent=2))  # Direct attribute access
             formatted.append("```")
-            state["output"] = "\n".join(formatted)
-            state["next_state"] = "complete"
+            
+            return PipelineState(
+                  **state.model_dump(exclude={'output', 'next_state'}),
+                output="\n".join(formatted),
+                next_state="complete"
+            )
         except Exception as e:
-            state["error"] = f"Error in formatting response: {str(e)}"
-            state["next_state"] = "handle_error"
-        return state
+            return PipelineState(
+                   **state.model_dump(exclude={'error', 'next_state'}),
+                error=f"Formatting error: {str(e)}",
+                next_state="handle_error"
+            )
 
-    def node_handle_error(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    def node_handle_error(self, state: PipelineState) -> PipelineState:  # Changed type hint
         """
         State 4: Handle Error.
         Returns an error message.
         """
         self.log("Handling error")
-        error_message = state.get("error", "Unknown error")
-        state["output"] = f"## Error Occurred\n```\n{error_message}\n```"
-        state["next_state"] = "complete"
-        return state
+        return PipelineState(
+             **state.model_dump(exclude={'output', 'next_state'}),
+            output=f"## Error Occurred\n```\n{state.error}\n```",  # Direct attribute access
+            next_state="complete"
+        )
 
     def _validate_api_call(self, api_call: dict) -> bool:
         """Validate generated call against OpenAPI spec"""
@@ -370,61 +409,45 @@ Example:
     # Pipeline entry point using LangGraph
     # ----------------------------
     def execute_with_langgraph(self, command: str) -> str:
-        """
-        Creates and runs a LangGraph state machine to process the given command.
-        """
-        # Initialize the OpenAI client
-        self.openai_client = OpenAI(api_key=self.valves.openai_api_key)
-
-        # Create the initial state
-        initial_state: HashableState = HashableState({"command": command})
-        #initial_state: dict = {"command": command}
-
-        # Build the state graph with our four nodes
-        graph = StateGraph(initial_state)
-       
-
-        # Register nodes with a label matching the 'next_state' field
+        # Initialize graph
+        graph = StateGraph(PipelineState)
+        
+        # Add nodes using corrected methods
         graph.add_node("generate_api_call", self.node_generate_api_call)
         graph.add_node("execute_api_call", self.node_execute_api_call)
         graph.add_node("format_response", self.node_format_response)
         graph.add_node("handle_error", self.node_handle_error)
 
-        app = graph.compile()
+        # Set proper entry point
+        graph.set_entry_point("generate_api_call")
 
-        # Set the entry point
-        current_state = initial_state
-        current_node = "generate_api_call"
-
-        # Run the state machine until 'complete'
+        # Add conditional edges
+        graph.add_conditional_edges(
+            "generate_api_call",
+            lambda state: "handle_error" if (state.error if isinstance(state, PipelineState) else state.get('error')) else "execute_api_call"
+        )
         
-        # Run the state machine until 'complete' state is reached or an error occurs
-        while True:
-            try:
-                # Use the app.invoke() method to process the state transition
-                result = app.invoke(current_state)
-                
-                # Retrieve the next state from the result
-                next_state = result.get("next_state")
-                
-                # If the next state is 'complete', exit the loop
-                if next_state == "complete":
-                    break
-                
-                # Otherwise, update the current node to the next state
-                current_state = result
-                current_node = next_state
-            
-            except Exception as e:
-                # If an error occurs, transition to the 'handle_error' node
-                print(f"Error occurred: {str(e)}. Transitioning to error handling.")
-                current_node = "handle_error"
-                
-                # Handle the error state (you can further modify the state here if needed)
-                result = app.invoke(current_state)
+        graph.add_conditional_edges(
+            "execute_api_call",
+            lambda state: "handle_error" if (state.error if isinstance(state, PipelineState) else state.get('error')) else "format_response"
+        )
 
-        # Return the final output, if any
-        return result.get("output", "No output generated.")
+        # Connect terminal nodes
+        graph.add_edge("format_response", END)
+        graph.add_edge("handle_error", END)
+
+        # Compile and execute
+        app = graph.compile()
+        final_state = app.invoke(PipelineState(command=command))
+        
+        # Handle both Pydantic model and dict access
+        if isinstance(final_state, PipelineState):
+            return final_state.output or "No output generated"
+        return final_state.get('output', "No output generated")
+
+
+
+
 
     # ----------------------------
     # Existing pipe() function modified to use LangGraph
