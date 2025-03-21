@@ -16,7 +16,6 @@ from typing import List, Optional, Union, Generator, Iterator, Dict, Any
 from langgraph.graph import END 
 from pydantic import BaseModel
 from openai import OpenAI  # Changed import
-from deepseek import DeepSeek
 
 # from utils.pipelines.main import get_last_user_message
 
