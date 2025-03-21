@@ -36,6 +36,11 @@ class OpenAPISpec(BaseModel):
     endpoints: Dict[str, Dict[str, Dict]]
     base_url: str
 
+class HashableState(dict):
+    def __hash__(self):
+        # Convert the dictionary items to a frozenset (which is hashable)
+        return hash(frozenset(self.items()))
+
 # Configuration model
 class Pipeline:
     class Valves(BaseModel):
@@ -371,8 +376,10 @@ Example:
         # Initialize the OpenAI client
         self.openai_client = OpenAI(api_key=self.valves.openai_api_key)
 
-        # Create the initial state
-        initial_state: Dict[str, Any] = {"command": command}
+          # Create the initial state as a HashableState
+        initial_state: HashableState = HashableState({"command": command})
+
+        #self.log(f"State type: {type(current_state)}")
 
         # Build the state graph with our four nodes
         graph = StateGraph(initial_state)
