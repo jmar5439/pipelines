@@ -24,7 +24,7 @@ logger = getLogger(__name__)
 logger.setLevel("DEBUG")
 
 # LangGraph imports
-from langgraph.graph import StateGraph, Node
+from langgraph.graph import StateGraph
 
 def get_last_assistant_message_obj(messages: List[dict]) -> dict:
     for message in reversed(messages):
