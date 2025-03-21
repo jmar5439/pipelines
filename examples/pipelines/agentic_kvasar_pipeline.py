@@ -79,12 +79,13 @@ class Pipeline:
 
     def log(self, message: str, suppress_repeats: bool = False):
         """Logs messages to the terminal if debugging is enabled."""
+        message_str = str(message)  # Ensure message is a string
         if self.valves.debug:
             if suppress_repeats:
-                if message in self.suppressed_logs:
+                if message_str in self.suppressed_logs:
                     return
-                self.suppressed_logs.add(message)
-            print(f"[DEBUG] {message}")
+                self.suppressed_logs.add(message_str)
+            print(f"[DEBUG] {message_str}")
 
     async def on_startup(self):
         print(f"Kvasar pipeline started: {__name__}")
