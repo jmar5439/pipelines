@@ -72,7 +72,6 @@ class Pipeline:
 
         # OpenAI Configuration
         openai_api_key: str = ""
-        deepseek_api_key:str =""
         debug: bool = False
         cache_spec_minutes: int = 60
 
@@ -91,8 +90,7 @@ class Pipeline:
                 "kvasar_api_url": os.getenv("KVASAR_API_URL", "https://kvasar.herokuapp.com"),
                 "openai_model": os.getenv("OPENAI_MODEL", "gpt-4"),
                 "openapi_spec_url": os.getenv("KVASAR_OPENAPI_URL", "https://kvasar.herokuapp.com/v3/api-docs"),
-                "debug": os.getenv("DEBUG_MODE", "false").lower() == "true",
-                "deepseek_api_key": os.getenv("DEEPSEEK_API_KEY", ""),
+                "debug": os.getenv("DEBUG_MODE", "false").lower() == "true"
             }
         )
         self.access_token = ""
@@ -457,7 +455,7 @@ Example:
     # ----------------------------
     def pipe(self, user_message: str, model_id: str, messages: List[dict], body: dict) -> Union[str, Generator, Iterator]:
         self.openai_client = OpenAI(api_key=self.valves.openai_api_key)
-        #self.openai_client = OpenAI(api_key=self.valves.deepseek_api_key)
+        # self.openai_client = OpenAI(api_key=self.valves.deepseek_api_key)
         logger.info("KVASAR pipeline started with %d endpoints loaded", 
                     len(self.openapi_spec.endpoints) if self.openapi_spec else 0)
         logger.debug(f"Processing Kvasar request: {user_message}")
