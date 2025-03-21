@@ -1,0 +1,6 @@
+build:
+  docker:
+    web: Dockerfile # Point to your Dockerfile
+run:
+  web: bash start.sh # Command to start the web service (as defined in your Dockerfile)
+  # Make sure that the script start.sh is executable and in the root of your project
