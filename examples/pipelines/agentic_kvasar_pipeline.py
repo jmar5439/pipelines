@@ -376,32 +376,55 @@ Example:
         # Initialize the OpenAI client
         self.openai_client = OpenAI(api_key=self.valves.openai_api_key)
 
-          # Create the initial state as a HashableState
-        initial_state: HashableState = HashableState({"command": command})
-
-        #self.log(f"State type: {type(current_state)}")
+        # Create the initial state
+        #initial_state: HashableState = HashableState({"command": command})
+        initial_state: dict = {"command": command}
 
         # Build the state graph with our four nodes
         graph = StateGraph(initial_state)
+       
+
         # Register nodes with a label matching the 'next_state' field
         graph.add_node("generate_api_call", self.node_generate_api_call)
         graph.add_node("execute_api_call", self.node_execute_api_call)
         graph.add_node("format_response", self.node_format_response)
         graph.add_node("handle_error", self.node_handle_error)
 
+        app = graph.compile()
+
         # Set the entry point
         current_state = initial_state
         current_node = "generate_api_call"
 
         # Run the state machine until 'complete'
+        
+        # Run the state machine until 'complete' state is reached or an error occurs
         while True:
-            current_state = graph.run_node(current_node, current_state)
-            next_state = current_state.get("next_state")
-            if next_state == "complete":
-                break
-            current_node = next_state
+            try:
+                # Use the app.invoke() method to process the state transition
+                result = app.invoke(current_state)
+                
+                # Retrieve the next state from the result
+                next_state = result.get("next_state")
+                
+                # If the next state is 'complete', exit the loop
+                if next_state == "complete":
+                    break
+                
+                # Otherwise, update the current node to the next state
+                current_state = result
+                current_node = next_state
+            
+            except Exception as e:
+                # If an error occurs, transition to the 'handle_error' node
+                print(f"Error occurred: {str(e)}. Transitioning to error handling.")
+                current_node = "handle_error"
+                
+                # Handle the error state (you can further modify the state here if needed)
+                result = app.invoke(current_state)
 
-        return current_state.get("output", "No output generated.")
+        # Return the final output, if any
+        return result.get("output", "No output generated.")
 
     # ----------------------------
     # Existing pipe() function modified to use LangGraph
