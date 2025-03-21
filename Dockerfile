@@ -62,4 +62,5 @@ ENV HOST="0.0.0.0"
 ENV PORT="9099"
 
 # if we already installed the requirements on build, we can skip this step on run
-ENTRYPOINT [ "bash", "start.sh" ]
+# ENTRYPOINT [ "bash", "start.sh" ]
+CMD ["./start.sh"]

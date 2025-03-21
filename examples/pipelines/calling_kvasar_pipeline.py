@@ -5,22 +5,26 @@ date: 2025-03-19
 version: 1.0
 license: MIT
 description: This pipeline integrates KVASAR Agile for automatic items creation 
-
 """
+
 import os
 import json
 import uuid
-from openai import OpenAI  # Changed import
 import requests
-from pydantic import BaseModel
 from datetime import datetime
-from typing import List, Optional,  Union,Generator, Iterator,Dict, Any
+from typing import List, Optional, Union, Generator, Iterator, Dict, Any
+
+from pydantic import BaseModel
+from openai import OpenAI  # Changed import
 
 from utils.pipelines.main import get_last_user_message
 
 from logging import getLogger
 logger = getLogger(__name__)
 logger.setLevel("DEBUG")
+
+# LangGraph imports
+from langgraph.graph import StateGraph, Node
 
 def get_last_assistant_message_obj(messages: List[dict]) -> dict:
     for message in reversed(messages):
@@ -50,10 +54,8 @@ class Pipeline:
         openai_api_key: str = ""
         debug: bool = False
         cache_spec_minutes: int = 60
-        # spec_last_fetched: datetime
 
     def __init__(self):
-       
         self.name = "Kvasar API Pipeline 2"
         self.spec_last_fetched: Optional[datetime] = None
         self.openapi_spec: Optional[OpenAPISpec] = None
@@ -72,12 +74,9 @@ class Pipeline:
             }
         )
         self.access_token = ""
-        self.suppressed_logs = set()  # Initialize suppressed_logs
-        #self.openapi_spec: Optional[OpenAPISpec] = None
-        #self.spec_last_fetched: Optional[datetime] = None
-          # Initialize OpenAI client
-         # Added client initialization
-    
+        self.suppressed_logs = set()
+        # OpenAI client initialization will be done in the pipe() method
+
     def log(self, message: str, suppress_repeats: bool = False):
         """Logs messages to the terminal if debugging is enabled."""
         if self.valves.debug:
@@ -90,7 +89,6 @@ class Pipeline:
     async def on_startup(self):
         print(f"Kvasar pipeline started: {__name__}")
         await self.refresh_openapi_spec()
-        
         
     async def refresh_openapi_spec(self):
         """Fetch and cache OpenAPI specification with expiration"""
@@ -107,7 +105,7 @@ class Pipeline:
                             'summary': details.get('summary', ''),
                             'parameters': details.get('parameters', []),
                             'required': [p['name'] for p in details.get('parameters', []) 
-                                       if p.get('required', False)]
+                                         if p.get('required', False)]
                         }
                         for method, details in methods.items()
                     }
@@ -118,7 +116,6 @@ class Pipeline:
                 )
                 self.spec_last_fetched = datetime.now()
                 logger.info("Successfully updated OpenAPI spec with %d endpoints", len(endpoints))
-                
             except Exception as e:
                 logger.error("Failed to refresh OpenAPI spec: %s", str(e))
                 if not self.openapi_spec:
@@ -146,7 +143,6 @@ class Pipeline:
                 
     async def on_shutdown(self):
         print(f"Kvasar pipeline stopped: {__name__}")
-        pass
 
     async def on_valves_updated(self):
         pass
@@ -158,27 +154,21 @@ class Pipeline:
             "client_secret": self.valves.client_secret,
             "audience": self.valves.audience,
             "grant_type": "client_credentials"
-          }
+        }
     
         try:
             headers = { 'content-type': "application/json" }
-            
-            response = requests.post(self.valves.auth0_token_url, json=payload,headers=headers)
+            response = requests.post(self.valves.auth0_token_url, json=payload, headers=headers)
             response.raise_for_status()
             token = response.json().get("access_token")
-        
             if not token:
                 logger.error("Auth0 response does not contain an access token: %s", response.json())
                 raise ValueError("Failed to retrieve access token")
-        
             logger.debug("Successfully retrieved access token")
             return token
-
         except requests.exceptions.RequestException as e:
             logger.error("Failed to get authentication token: %s", e, exc_info=True)
-        raise
-
-  
+            raise
 
     def _execute_api_call(self, api_call: dict, token: str) -> dict:
         """Execute the generated API call against Kvasar API"""
@@ -190,7 +180,7 @@ class Pipeline:
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
-             'Access-Control-Allow-Origin': '*'
+            "Access-Control-Allow-Origin": "*"
         }
 
         try:
@@ -215,133 +205,129 @@ class Pipeline:
             "role": "system",
             "content": f"""You are an API call generator. Convert user requests to Kvasar API calls.
 
-        {self._format_endpoints_prompt()}
+{self._format_endpoints_prompt()}
 
-        Respond ONLY with JSON containing:
-        - endpoint: Full path with parameters (e.g., /items/{{id}})
-        - method: HTTP verb
-        - body: JSON object for request body (if needed)
-        - parameters: Path/query parameters (key-value pairs)
+Respond ONLY with JSON containing:
+- endpoint: Full path with parameters (e.g., /items/{{id}})
+- method: HTTP verb
+- body: JSON object for request body (if needed)
+- parameters: Path/query parameters (key-value pairs)
 
-        Example:
-        {{ "endpoint": "/items/123", "method": "GET", "body": {{}}, "parameters": {{}} }}
-        """
+Example:
+{{ "endpoint": "/items/123", "method": "GET", "body": {{}}, "parameters": {{}} }}
+"""
         }
         return [
             base_prompt,
             {"role": "user", "content": user_command}
         ]
-    def pipe(self, user_message: str, model_id: str, 
-           messages: List[dict], body: dict) -> Union[str, Generator, Iterator]:
-        
-        self.openai_client = OpenAI(api_key=self.valves.openai_api_key) 
-        ## self.refresh_openapi_spec()
-        logger.info("KVASAR pipeline started with %d endpoints loaded", 
-                   len(self.openapi_spec.endpoints) if self.openapi_spec else 0)
-        logger.debug(f"Processing Kvasar request: {user_message}")
 
-        dt_start = datetime.now()
-        
-        if body.get("title", False):
-            return "(title generation disabled)"
+    # ----------------------------
+    # LangGraph State Machine Nodes
+    # ----------------------------
 
+    def node_generate_api_call(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        State 1: Generate API Call.
+        Uses OpenAI to generate a structured API call from the user command.
+        """
+        command = state.get("command")
+        self.log(f"Generating API call for command: {command}")
         try:
-            
-            return self.execute_kvasar_operation(user_message,dt_start)
-        except Exception as e:
-            error_msg = f"Kvasar API Error: {str(e)}"
-            logger.error(error_msg)
-            return error_msg
-
-    def execute_kvasar_operation(self, command: str, dt_start: datetime) -> Generator:
-        """Execute Kvasar API operation with streaming support"""
-        try:
-            # Check model compatibility
-            supports_json = any(m in self.valves.openai_model.lower() 
-                          for m in ['turbo-preview', '0125', '1106'])
-            api_call_prompt = self._generate_api_call_prompt(command)
-            
-
-             # Generate structured API call
             create_args = {
                 "model": self.valves.openai_model,
                 "messages": self._generate_api_call_prompt(command),
                 "temperature": 0.1
             }
+            # If the model supports a JSON response format:
+            supports_json = any(m in self.valves.openai_model.lower() 
+                                for m in ['turbo-preview', '0125', '1106'])
             if supports_json:
                 create_args["response_format"] = {"type": "json_object"}
-
-            # Generate structured API call
             response = self.openai_client.chat.completions.create(**create_args)
-
-            # Handle different response formats
             raw_response = response.choices[0].message.content
-            
             try:
                 api_call = json.loads(raw_response)
             except json.JSONDecodeError:
-            # Fallback: Try to extract JSON from markdown
                 json_str = raw_response.strip('` \n').replace('json\n', '')
                 api_call = json.loads(json_str)
-            
-            logger.info(f"Generated API call: {api_call}")
-            
-            
-            # Validate against known endpoints
-            if not self._validate_api_call(api_call):
-                yield "Error: Invalid API call structure"
-                return
-
-            
-            # Execute API call
-            token = os.environ.get("OAUTH_ACCESS_TOKEN")
-            # token = self._get_auth_token()
-            result = self._execute_api_call(api_call, token)
-             # Handle error responses
-            if "error" in result:
-                yield f"## API Error\n```\n{result['error']}\nStatus Code: {result.get('status_code', 'Unknown')}\n```\n"
-                return
-
-            yield from self._format_response(api_call, result)
-
-           
-        except requests.exceptions.RequestException as e:
-            yield f"## Connection Error\n```\n{str(e)}\n```\n"
-        except json.JSONDecodeError:
-            yield "## Error: Invalid API response format\n"
+            self.log(f"Generated API call: {api_call}")
+            state["api_call"] = api_call
+            state["next_state"] = "execute_api_call"
         except Exception as e:
-            logger.exception("Unexpected error in Kvasar operation")
-            yield f"## Processing Error\n```\n{str(e)}\n```\n"
+            state["error"] = f"Error in API call generation: {str(e)}"
+            state["next_state"] = "handle_error"
+        return state
 
-    def _path_matches_template(self, actual_path: str, template_path: str) -> bool:
-        # Simple path parameter matching (e.g., /items/{id} vs /items/123)
-        actual_parts = actual_path.strip('/').split('/')
-        template_parts = template_path.strip('/').split('/')
-        
-        if len(actual_parts) != len(template_parts):
-            return False
-            
-        for a, t in zip(actual_parts, template_parts):
-            if t.startswith('{') and t.endswith('}'):
-                continue
-            if a != t:
-                return False
-        return True
+    def node_execute_api_call(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        State 2: Execute API Call.
+        Executes the API call and stores the result.
+        """
+        self.log("Executing API call")
+        api_call = state.get("api_call")
+        if not api_call:
+            state["error"] = "No API call found."
+            state["next_state"] = "handle_error"
+            return state
 
-    def _format_response(self, api_call: dict, result: dict) -> Generator:
-        """Stream formatted response to client"""
-        yield f"## Operation Successful\n"
-        yield f"**Endpoint**: {api_call['endpoint']}\n"
-        yield f"**Method**: {api_call['method']}\n"
-        
-        if api_call.get('parameters'):
-            yield "### Parameters\n```json\n"
-            yield json.dumps(api_call['parameters'], indent=2)
-            yield "\n```\n"
-            
-        yield "### Response Data\n```json\n"
-        yield json.dumps(result, indent=2)
-        yield "\n```\n"
+        # Validate API call against the OpenAPI spec
+        if not self._validate_api_call(api_call):
+            state["error"] = "Invalid API call structure."
+            state["next_state"] = "handle_error"
+            return state
+
+        try:
+            token = os.environ.get("OAUTH_ACCESS_TOKEN")  # Alternatively: self._get_auth_token()
+            result = self._execute_api_call(api_call, token)
+            if "error" in result:
+                state["error"] = f"API Error: {result['error']} (Status: {result.get('status_code', 'Unknown')})"
+                state["next_state"] = "handle_error"
+            else:
+                state["result"] = result
+                state["next_state"] = "format_response"
+        except Exception as e:
+            state["error"] = f"Error during API execution: {str(e)}"
+            state["next_state"] = "handle_error"
+        return state
+
+    def node_format_response(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        State 3: Format Response.
+        Formats the API response into a human-readable output.
+        """
+        self.log("Formatting API response")
+        try:
+            api_call = state.get("api_call", {})
+            result = state.get("result", {})
+            formatted = []
+            formatted.append("## Operation Successful")
+            formatted.append(f"**Endpoint**: {api_call.get('endpoint', '')}")
+            formatted.append(f"**Method**: {api_call.get('method', '')}")
+            if api_call.get('parameters'):
+                formatted.append("### Parameters\n```json")
+                formatted.append(json.dumps(api_call.get('parameters'), indent=2))
+                formatted.append("```")
+            formatted.append("### Response Data\n```json")
+            formatted.append(json.dumps(result, indent=2))
+            formatted.append("```")
+            state["output"] = "\n".join(formatted)
+            state["next_state"] = "complete"
+        except Exception as e:
+            state["error"] = f"Error in formatting response: {str(e)}"
+            state["next_state"] = "handle_error"
+        return state
+
+    def node_handle_error(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        State 4: Handle Error.
+        Returns an error message.
+        """
+        self.log("Handling error")
+        error_message = state.get("error", "Unknown error")
+        state["output"] = f"## Error Occurred\n```\n{error_message}\n```"
+        state["next_state"] = "complete"
+        return state
 
     def _validate_api_call(self, api_call: dict) -> bool:
         """Validate generated call against OpenAPI spec"""
@@ -350,11 +336,91 @@ class Pipeline:
             
         path = api_call.get('endpoint', '').split('?')[0]
         method = api_call.get('method', '').upper()
-        
-        # Find matching path template
         for spec_path in self.openapi_spec.endpoints.keys():
             if self._path_matches_template(path, spec_path):
                 if method in self.openapi_spec.endpoints[spec_path]:
                     return True
         logger.warning("Validation failed for %s %s", method, path)
         return False
+
+    def _path_matches_template(self, actual_path: str, template_path: str) -> bool:
+        actual_parts = actual_path.strip('/').split('/')
+        template_parts = template_path.strip('/').split('/')
+        if len(actual_parts) != len(template_parts):
+            return False
+        for a, t in zip(actual_parts, template_parts):
+            if t.startswith('{') and t.endswith('}'):
+                continue
+            if a != t:
+                return False
+        return True
+
+    # ----------------------------
+    # Pipeline entry point using LangGraph
+    # ----------------------------
+    def execute_with_langgraph(self, command: str) -> str:
+        """
+        Creates and runs a LangGraph state machine to process the given command.
+        """
+        # Initialize the OpenAI client
+        self.openai_client = OpenAI(api_key=self.valves.openai_api_key)
+
+        # Create the initial state
+        initial_state: Dict[str, Any] = {"command": command}
+
+        # Build the state graph with our four nodes
+        graph = StateGraph(initial_state)
+        # Register nodes with a label matching the 'next_state' field
+        graph.add_node("generate_api_call", self.node_generate_api_call)
+        graph.add_node("execute_api_call", self.node_execute_api_call)
+        graph.add_node("format_response", self.node_format_response)
+        graph.add_node("handle_error", self.node_handle_error)
+
+        # Set the entry point
+        current_state = initial_state
+        current_node = "generate_api_call"
+
+        # Run the state machine until 'complete'
+        while True:
+            current_state = graph.run_node(current_node, current_state)
+            next_state = current_state.get("next_state")
+            if next_state == "complete":
+                break
+            current_node = next_state
+
+        return current_state.get("output", "No output generated.")
+
+    # ----------------------------
+    # Existing pipe() function modified to use LangGraph
+    # ----------------------------
+    def pipe(self, user_message: str, model_id: str, messages: List[dict], body: dict) -> Union[str, Generator, Iterator]:
+        self.openai_client = OpenAI(api_key=self.valves.openai_api_key)
+        logger.info("KVASAR pipeline started with %d endpoints loaded", 
+                    len(self.openapi_spec.endpoints) if self.openapi_spec else 0)
+        logger.debug(f"Processing Kvasar request: {user_message}")
+
+        dt_start = datetime.now()
+        if body.get("title", False):
+            return "(title generation disabled)"
+        try:
+            # Use the LangGraph state machine to process the command
+            output = self.execute_with_langgraph(user_message)
+            return output
+        except Exception as e:
+            error_msg = f"Kvasar API Error: {str(e)}"
+            logger.error(error_msg)
+            return error_msg
+
+# Example usage:
+if __name__ == "__main__":
+    pipeline = Pipeline()
+    # Ensure the OpenAPI spec is loaded; in production, on_startup() would be awaited.
+    try:
+        import asyncio
+        asyncio.run(pipeline.refresh_openapi_spec())
+    except Exception as e:
+        logger.error("Error during startup: %s", str(e))
+    # Simulate a user command
+    command = "Create a new agile item for sprint backlog"
+    result = pipeline.pipe(command, model_id="gpt-4", messages=[], body={})
+    print(result)
