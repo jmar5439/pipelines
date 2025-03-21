@@ -56,7 +56,7 @@ class Pipeline:
         cache_spec_minutes: int = 60
 
     def __init__(self):
-        self.name = "Kvasar API Pipeline 2"
+        self.name = "Kvasar API Pipeline 3"
         self.spec_last_fetched: Optional[datetime] = None
         self.openapi_spec: Optional[OpenAPISpec] = None
         self.valves = self.Valves(
