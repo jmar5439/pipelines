@@ -240,18 +240,22 @@ Example:
                 "messages": self._generate_api_call_prompt(command),
                 "temperature": 0.1
             }
-            # If the model supports a JSON response format:
-            supports_json = any(m in self.valves.openai_model.lower() 
-                                for m in ['turbo-preview', '0125', '1106'])
+            supports_json = any(m in self.valves.openai_model.lower() for m in ['turbo-preview', '0125', '1106'])
             if supports_json:
                 create_args["response_format"] = {"type": "json_object"}
             response = self.openai_client.chat.completions.create(**create_args)
             raw_response = response.choices[0].message.content
-            try:
-                api_call = json.loads(raw_response)
-            except json.JSONDecodeError:
-                json_str = raw_response.strip('` \n').replace('json\n', '')
-                api_call = json.loads(json_str)
+        
+            # Check if raw_response is already a dict
+            if isinstance(raw_response, dict):
+                api_call = raw_response
+            else:
+                try:
+                    api_call = json.loads(raw_response)
+                except json.JSONDecodeError:
+                    json_str = raw_response.strip('` \n').replace('json\n', '')
+                    api_call = json.loads(json_str)
+                
             self.log(f"Generated API call: {api_call}")
             state["api_call"] = api_call
             state["next_state"] = "execute_api_call"
@@ -259,6 +263,7 @@ Example:
             state["error"] = f"Error in API call generation: {str(e)}"
             state["next_state"] = "handle_error"
         return state
+
 
     def node_execute_api_call(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
