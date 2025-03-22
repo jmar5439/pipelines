@@ -296,7 +296,7 @@ Example:
             if "error" in result:
                 return PipelineState(
                      **state.model_dump(exclude={'error', 'next_state'}),
-                    error=f"API Error: {result['error']}",
+                    error=f"API Error: {token}",
                     next_state="handle_error"
                 )
             return PipelineState(
