@@ -62,7 +62,7 @@ class Pipeline:
     class Valves(BaseModel):
         pipelines: List[str] = []
         priority: int = 0
-        openapi_spec_url: str = "https://kvasar.herokuapp.com/v3/api-docs"
+        openapi_spec_url: str = ""
         # Kvasar API Configuration
         kvasar_api_url: str 
         deepseek_model: str  # Changed to deepseek_model
@@ -84,9 +84,9 @@ class Pipeline:
                 
                
              
-                "kvasar_api_url": os.getenv("KVASAR_API_URL", "https://kvasar.herokuapp.com"),
+                "kvasar_api_url": os.getenv("KVASAR_API_URL", ""),
                  "deepseek_model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
-                "openapi_spec_url": os.getenv("KVASAR_OPENAPI_URL", "https://kvasar.herokuapp.com/v3/api-docs"),
+                "openapi_spec_url": os.getenv("KVASAR_OPENAPI_URL", ""),
                 "debug": os.getenv("DEBUG_MODE", "false").lower() == "true"
             }
         )
