@@ -16,7 +16,7 @@ from typing import List, Optional, Union, Generator, Iterator, Dict, Any
 from langgraph.graph import END 
 from pydantic import BaseModel
 from openai import OpenAI  # Changed import
-from deepseek import DeepSeek  # 
+from deepseek import DeepSeekAPI  # 
 
 # from utils.pipelines.main import get_last_user_message
 
@@ -241,8 +241,10 @@ Example:
             if supports_json:
                 create_args["response_format"] = {"type": "json_object"}
                 
-            response = self.deepseek_client.chat.completions.create(**create_args)
-            raw_response = response.choices[0].message.content
+            
+            raw_response = self.deepseek_client.chat_completion(**create_args)
+
+            #raw_response = response.choices[0].message.content
         
             # Parse response
             if isinstance(raw_response, dict):
@@ -431,7 +433,7 @@ Example:
     # Existing pipe() function modified to use LangGraph
     # ----------------------------
     def pipe(self, user_message: str, model_id: str, messages: List[dict], body: dict) -> Union[str, Generator, Iterator]:
-        self.openai_client = OpenAI(api_key=self.valves.openai_api_key)
+        self.deepseek_client = DeepSeekAPI(api_key=self.valves.deepseek_api_key)
         # self.openai_client = OpenAI(api_key=self.valves.deepseek_api_key)
         logger.info("KVASAR pipeline started with %d endpoints loaded", 
                     len(self.openapi_spec.endpoints) if self.openapi_spec else 0)
