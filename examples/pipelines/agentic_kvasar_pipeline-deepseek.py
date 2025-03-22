@@ -291,6 +291,7 @@ Example:
 
         try:
             token = self.valves.oauth_access_token
+            logger.warning("tk %s", token)
             result = self._execute_api_call(api_call, token)
             if "error" in result:
                 return PipelineState(
