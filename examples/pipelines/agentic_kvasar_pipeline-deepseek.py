@@ -291,12 +291,11 @@ Example:
 
         try:
             token = self.valves.oauth_access_token
-            logger.warning("tk %s", token)
             result = self._execute_api_call(api_call, token)
             if "error" in result:
                 return PipelineState(
                      **state.model_dump(exclude={'error', 'next_state'}),
-                    error=f"API Error: {token}",
+                    error=f"API Error: {result['error']}",
                     next_state="handle_error"
                 )
             return PipelineState(
@@ -437,6 +436,7 @@ Example:
         logger.info("KVASAR pipeline started with %d endpoints loaded", 
                     len(self.openapi_spec.endpoints) if self.openapi_spec else 0)
         logger.debug(f"Processing Kvasar request: {user_message}")
+        print("Body:", body)
 
         dt_start = datetime.now()
         if body.get("title", False):
