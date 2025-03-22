@@ -299,7 +299,7 @@ Example:
                     next_state="handle_error"
                 )
             return PipelineState(
-                **state.model_dump(exclude={'output', 'next_state'}),
+                **state.model_dump(exclude={'result', 'next_state'}),
                 result=result,
                 next_state="format_response"
             )
