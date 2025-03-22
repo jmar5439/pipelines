@@ -384,7 +384,7 @@ Example:
         """
         self.log("Handling error")
         return PipelineState(
-             **state.model_dump(exclude={'output', 'next_state'}),
+             **state.model_dump(exclude={'output', 'next_state','error'}),
             output=f"## Error Occurred\n```\n{state.error}\n```",  # Direct attribute access
             next_state="complete"
         )
