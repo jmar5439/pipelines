@@ -311,36 +311,68 @@ Example:
             )
 
 
-    def node_format_response(self, state: PipelineState) -> PipelineState:  # Changed type hint
+    def node_format_response(self, state: PipelineState) -> PipelineState:
         """
-        State 3: Format Response.
-        Formats the API response into a human-readable output.
+        State 3: Format Response for OpenWeb UI.
+        Structures the response with interactive elements and proper JSON formatting.
         """
-        self.log("Formatting API response")
+        self.log("Formatting API response for OpenWeb UI")
         try:
-            formatted = [
-                "## Operation Successful",
-                f"**Endpoint**: {state.api_call.endpoint}",  # Direct attribute access
-                f"**Method**: {state.api_call.method}"       # Direct attribute access
-            ]
+            # Base response structure
+            formatted = {
+                "type": "response",
+                "elements": [
+                    {
+                        "type": "header",
+                        "content": "✅ Operation Successful",
+                        "level": 2
+                    },
+                    {
+                        "type": "key_value",
+                        "data": {
+                            "Endpoint": f"`{state.api_call.get('endpoint', '')}`",
+                            "Method": f"`{state.api_call.get('method', '').upper()}`"
+                        }
+                    }
+                ]
+            }
+
+            # Add parameters if present
+            if state.api_call.get('parameters'):
+                formatted["elements"].append({
+                    "type": "code_block",
+                    "title": "Request Parameters",
+                    "content": json.dumps(state.api_call['parameters'], indent=2),
+                    "language": "json"
+                })
+
+            # Add response data with dynamic formatting
+            response_content = {
+                "type": "code_block",
+                "title": "API Response",
+                "content": json.dumps(state.result, indent=2),
+                "language": "json"
+            }
+
+            if isinstance(state.result, list):
+                response_content["metadata"] = {
+                    "item_count": len(state.result),
+                    "summary_fields": list(state.result[0].keys()) if state.result else []
+                }
             
-            if state.api_call.parameters:
-                formatted.append("### Parameters\n```json")
-                formatted.append(json.dumps(state.api_call.parameters, indent=2))
-                formatted.append("```")
-                
-            formatted.append("### Response Data\n```json")
-            formatted.append(json.dumps(state.result, indent=2))  # Direct attribute access
-            formatted.append("```")
-            
+            formatted["elements"].append(response_content)
+
+            # Convert to OpenWeb UI's expected string format
+            output = json.dumps(formatted, indent=2)
+
             return PipelineState(
-                  **state.model_dump(exclude={'output', 'next_state'}),
-                output="\n".join(formatted),
+                **state.model_dump(exclude={'output', 'next_state'}),
+                output=output,
                 next_state="complete"
             )
         except Exception as e:
             return PipelineState(
-                   **state.model_dump(exclude={'error', 'next_state'}),
+                **state.model_dump(exclude={'error', 'next_state'}),
                 error=f"Formatting error: {str(e)}",
                 next_state="handle_error"
             )
