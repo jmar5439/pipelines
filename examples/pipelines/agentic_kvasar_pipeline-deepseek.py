@@ -436,7 +436,6 @@ Example:
         logger.info("KVASAR pipeline started with %d endpoints loaded", 
                     len(self.openapi_spec.endpoints) if self.openapi_spec else 0)
         logger.debug(f"Processing Kvasar request: {user_message}")
-        print("Body:", body)
 
         dt_start = datetime.now()
         if body.get("title", False):
