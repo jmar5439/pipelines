@@ -66,7 +66,7 @@ class Pipeline:
         # Kvasar API Configuration
         kvasar_api_url: str 
         deepseek_model: str  # Changed to deepseek_model
-     
+        oauth_access_token: str
      
         # DeepSeek Configuration
         deepseek_api_key: str = ""  # Changed to deepseek_api_key
@@ -81,9 +81,7 @@ class Pipeline:
             **{
                 "pipelines": ["*"],
                 "deepseek_api_key": os.getenv("DEEPSEEK_API_KEY", ""),
-                
-               
-             
+                "oauth_access_token":os.getenv("OAUTH_ACCESS_TOKEN",""),
                 "kvasar_api_url": os.getenv("KVASAR_API_URL", ""),
                  "deepseek_model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
                 "openapi_spec_url": os.getenv("KVASAR_OPENAPI_URL", ""),
@@ -292,7 +290,7 @@ Example:
             )
 
         try:
-            token = os.environ.get("OAUTH_ACCESS_TOKEN")
+            token = self.valves.oauth_access_token
             result = self._execute_api_call(api_call, token)
             if "error" in result:
                 return PipelineState(
@@ -434,7 +432,7 @@ Example:
     # ----------------------------
     def pipe(self, user_message: str, model_id: str, messages: List[dict], body: dict) -> Union[str, Generator, Iterator]:
         self.deepseek_client = DeepSeekAPI(api_key=self.valves.deepseek_api_key)
-        # self.openai_client = OpenAI(api_key=self.valves.deepseek_api_key)
+
         logger.info("KVASAR pipeline started with %d endpoints loaded", 
                     len(self.openapi_spec.endpoints) if self.openapi_spec else 0)
         logger.debug(f"Processing Kvasar request: {user_message}")
