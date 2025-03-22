@@ -46,7 +46,7 @@ class HashableState(dict):
 class PipelineState(BaseModel):
     command: str
     api_call: Optional[dict] = None
-    result: Optional[dict] = None
+    result: Optional[Any] = None
     error: Optional[str] = None
     output: Optional[str] = None
     next_state: Optional[str] = None
