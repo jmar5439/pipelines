@@ -404,7 +404,7 @@ Example:
             if isinstance(raw_suggestion_response, dict):
                 try:
                     # Extract JSON string from message content
-                    content_str = raw_suggestion_response['choices'][0]['message']['content']
+                    content_str = raw_suggestion_response
                     
                     # Parse the JSON string to Python dict
                     import json  # Make sure to import json at the top of your file
