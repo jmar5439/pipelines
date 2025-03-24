@@ -330,7 +330,7 @@ Example:
 
             # Log data for debugging
             self.log(f"API Call: {state.api_call}")
-            self.log(f"Response Data: {state.result}")
+            # self.log(f"Response Data: {state.result}")
 
             # Base response structure
             formatted = {
