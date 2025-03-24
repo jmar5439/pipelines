@@ -472,6 +472,21 @@ Example:
     def pipe(self, user_message: str, model_id: str, messages: List[dict], body: dict) -> Union[str, Generator, Iterator]:
         self.deepseek_client = DeepSeekAPI(api_key=self.valves.deepseek_api_key)
 
+            # Check that the OpenAPI spec is loaded and has endpoints.
+        if not self.openapi_spec or len(self.openapi_spec.endpoints) == 0:
+            logger.error("No endpoints loaded. Attempting to refresh OpenAPI spec...")
+            try:
+                # Try to refresh the spec (if running in a synchronous context, you might need to run it via asyncio)
+                import asyncio
+                asyncio.run(self.refresh_openapi_spec())
+            except Exception as e:
+                logger.error("Error during spec refresh: %s", str(e))
+            
+            if not self.openapi_spec or len(self.openapi_spec.endpoints) == 0:
+                error_msg = "Critical Error: No endpoints available in OpenAPI spec after refresh."
+                logger.error(error_msg)
+                return error_msg  # Alternatively, you can raise an exception here
+
         logger.info("KVASAR pipeline started with %d endpoints loaded", 
                     len(self.openapi_spec.endpoints) if self.openapi_spec else 0)
         logger.debug(f"Processing Kvasar request: {user_message}")
