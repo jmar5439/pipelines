@@ -180,7 +180,7 @@ class Pipeline:
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
         }
-
+        self.log(f"{self.valves.kvasar_api_url}{endpoint}")
         try:
             if method == "GET":
                 response = requests.get(url, headers=headers, params=body)
