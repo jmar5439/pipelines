@@ -261,7 +261,6 @@ Example:
                     json_str = raw_response.strip('` \n').replace('json\n', '')
                     api_call = json.loads(json_str)
                 
-            self.log(f"Generated API call: {api_call}")
             return PipelineState(
                 **state.model_dump(exclude={'api_call', 'error', 'next_state'}), 
                 api_call=api_call,
