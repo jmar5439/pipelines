@@ -435,10 +435,13 @@ Example:
 
         
         return PipelineState(
-            **state.model_dump(exclude={'output', 'next_state', 'error'}),
-            output=f"## Error Occurred\n```\n{error_message}\n```\n\nSuggestions:\n```\n{suggestions}\n```",
+        **state.model_dump(exclude={'output', 'next_state', 'error'}),
+            output=(
+                f"## Error Occurred\n```\n{error_message}\n```\n\n"
+                f"Suggestions:\n```\n{formatted_suggestions}\n```"
+            ),
             next_state="complete"
-        )
+    )
 
     def _validate_api_call(self, api_call: dict) -> bool:
         """Validate generated call against OpenAPI spec"""
