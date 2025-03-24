@@ -399,7 +399,7 @@ Example:
                 temperature=0.2,
                 response_format={"type": "json_object"}
             )
-            
+            self.log(f'raw_suggestion_response')
             # First check if response structure is valid
             if isinstance(raw_suggestion_response, dict):
                 try:
