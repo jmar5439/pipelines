@@ -378,7 +378,11 @@ Example:
             formatted["elements"].append(response_content)
 
             # Convert to OpenWeb UI's expected string format
+            # output = json.dumps(formatted, indent=2)
             output = json.dumps(state.result, indent=2)
+
+            self.log(f"Here")
+
 
             # Return updated state
             return PipelineState(
