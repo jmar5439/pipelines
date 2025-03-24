@@ -399,7 +399,7 @@ Example:
                 temperature=0.2,
                 response_format={"type": "json_object"}
             )
-            self.log(f'API Response 1: {raw_suggestion_response}')
+            
             
           
             # If the response is a string, try to parse it into a dict
