@@ -290,7 +290,7 @@ Example:
         # Validate API call against the OpenAPI spec
         if not self._validate_api_call(api_call):
             return PipelineState(
-                 **state.model_dump(exclude={'output', 'next_state'}),
+                 **state.model_dump(exclude={'error', 'next_state'}),
                 error="Invalid API call structure",
                 next_state="handle_error"
             )
