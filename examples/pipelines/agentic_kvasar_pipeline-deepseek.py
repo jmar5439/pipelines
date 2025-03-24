@@ -401,21 +401,22 @@ Example:
             )
             self.log(f'API Response 1: {raw_suggestion_response}')
             
-            # First check if response structure is valid
-            # Check if the response is a dictionary (as expected)
-            if isinstance(raw_suggestion_response, dict):
+          
+            # If the response is a string, try to parse it into a dict
+            if isinstance(raw_suggestion_response, str):
                 try:
-                    # Extract suggestions from the response
-                    suggestions = raw_suggestion_response.get('suggestions', "No suggestions provided.")
-                    
-                    # If 'suggestions' is not in the response, handle it
-                    if not suggestions:
-                        suggestions = "No suggestions provided."
+                    content_dict = json.loads(raw_suggestion_response)
+                except json.JSONDecodeError as e:
+                    suggestions = f"Failed to parse JSON: {str(e)}"
+                    content_dict = None
+            elif isinstance(raw_suggestion_response, dict):
+                content_dict = raw_suggestion_response
+            else:
+                content_dict = None
 
-                except (KeyError, IndexError, json.JSONDecodeError) as parse_error:
-                    suggestions = f"Failed to parse response: {str(parse_error)}"
-                except Exception as e:
-                    suggestions = f"Unexpected error: {str(e)}"
+            # Check that we have a valid dict and extract the "suggestions" key
+            if content_dict is not None and isinstance(content_dict, dict):
+                suggestions = content_dict.get("suggestions", "No suggestions provided.")
             else:
                 suggestions = "Invalid response format, expected a JSON object."
                 
