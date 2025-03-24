@@ -384,15 +384,29 @@ Example:
                 next_state="handle_error"
             )
 
-    def node_handle_error(self, state: PipelineState) -> PipelineState:  # Changed type hint
-        """
-        State 4: Handle Error.
-        Returns an error message.
-        """
+    def node_handle_error(self, state: PipelineState) -> PipelineState:
         self.log("Handling error")
+        error_message = state.error or "Unknown error"
+        
+        # Attempt to get debugging suggestions from DeepSeek
+        try:
+            suggestion_response = self.deepseek_client.chat_completion(
+                model=self.valves.deepseek_model,
+                messages=[
+                    {"role": "system", "content": "You are an assistant providing debugging tips."},
+                    {"role": "user", "content": f"I encountered this error: {error_message}\nHow can I resolve it?"}
+                ],
+                temperature=0.2,
+                response_format={"type": "json_object"}
+            )
+            # Extract suggestions from the DeepSeek response
+            suggestions = suggestion_response.get("suggestions", "No suggestions provided.")
+        except Exception as deepseek_error:
+            suggestions = f"Failed to get suggestions from DeepSeek: {str(deepseek_error)}"
+        
         return PipelineState(
-             **state.model_dump(exclude={'output', 'next_state','error'}),
-            output=f"## Error Occurred\n```\n{state.error}\n```",  # Direct attribute access
+            **state.model_dump(exclude={'output', 'next_state', 'error'}),
+            output=f"## Error Occurred\n```\n{error_message}\n```\n\nSuggestions:\n```\n{suggestions}\n```",
             next_state="complete"
         )
 
