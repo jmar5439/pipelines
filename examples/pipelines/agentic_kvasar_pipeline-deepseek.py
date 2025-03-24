@@ -324,6 +324,14 @@ Example:
         """
         self.log("Formatting API response for OpenWeb UI")
         try:
+            # Check if the necessary data is available
+            if not state.api_call or not state.result:
+                raise ValueError("Missing 'api_call' or 'result' data")
+
+            # Log data for debugging
+            self.log(f"API Call: {state.api_call}")
+            self.log(f"Response Data: {state.result}")
+
             # Base response structure
             formatted = {
                 "type": "response",
@@ -360,6 +368,7 @@ Example:
                 "language": "json"
             }
 
+            # If the result is a list, add metadata
             if isinstance(state.result, list):
                 response_content["metadata"] = {
                     "item_count": len(state.result),
@@ -371,17 +380,23 @@ Example:
             # Convert to OpenWeb UI's expected string format
             output = json.dumps(formatted, indent=2)
 
+            # Return updated state
             return PipelineState(
                 **state.model_dump(exclude={'output', 'next_state'}),
                 output=output,
                 next_state="complete"
             )
+        
         except Exception as e:
+            # Log the error for debugging
+            self.log(f"Error during formatting: {str(e)}")
+            
             return PipelineState(
                 **state.model_dump(exclude={'error', 'next_state'}),
                 error=f"Formatting error: {str(e)}",
                 next_state="handle_error"
             )
+
 
     def node_handle_error(self, state: PipelineState) -> PipelineState:
         self.log("Handling error")
