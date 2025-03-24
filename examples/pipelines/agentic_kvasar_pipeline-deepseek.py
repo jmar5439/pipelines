@@ -132,6 +132,9 @@ class Pipeline:
                 )
                 self.spec_last_fetched = datetime.now()
                 logger.info("Successfully updated OpenAPI spec with %d endpoints", len(endpoints))
+            except requests.exceptions.RequestException as e:
+                logger.error("Failed to refresh OpenAPI spec: %s", str(e))
+                return {"error": "Failed to fetch OpenAPI Spec"}
             except Exception as e:
                 logger.error("Failed to refresh OpenAPI spec: %s", str(e))
                 if not self.openapi_spec:
