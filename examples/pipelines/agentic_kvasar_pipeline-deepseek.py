@@ -390,7 +390,7 @@ Example:
         
         # Attempt to get debugging suggestions from DeepSeek
         try:
-            suggestion_response = self.deepseek_client.chat_completion(
+            raw_suggestion_response = self.deepseek_client.chat_completion(
                 model=self.valves.deepseek_model,
                 messages=[
                     {"role": "system", "content": "You are an assistant providing debugging tips. Always respond in JSON format with a 'suggestions' key."},
@@ -399,12 +399,26 @@ Example:
                 temperature=0.2,
                 response_format={"type": "json_object"}
             )
-            # Extract suggestions from the DeepSeek response
-            # Parse JSON response safely
-            if isinstance(suggestion_response, dict):
-                suggestions = suggestion_response.get("suggestions", "No suggestions provided.")
+            
+            # First check if response structure is valid
+            if isinstance(raw_suggestion_response, dict):
+                try:
+                    # Extract JSON string from message content
+                    content_str = raw_suggestion_response['choices'][0]['message']['content']
+                    
+                    # Parse the JSON string to Python dict
+                    import json  # Make sure to import json at the top of your file
+                    content_dict = json.loads(content_str)
+                    
+                    # Extract suggestions from parsed JSON
+                    suggestions = content_dict.get('suggestions', "No suggestions provided.")
+                except (KeyError, IndexError, json.JSONDecodeError) as parse_error:
+                    suggestions = f"Failed to parse response: {str(parse_error)}"
+                except Exception as e:
+                    suggestions = f"Unexpected error: {str(e)}"
             else:
                 suggestions = "Response format invalid"
+                
         except Exception as deepseek_error:
             suggestions = f"Failed to get suggestions from DeepSeek: {str(deepseek_error)}"
         
