@@ -566,8 +566,7 @@ Example:
         try:
             # Use the LangGraph state machine to process the command
             output = self.execute_with_langgraph(user_message)
-            formatted=self._json_to_markdown(output)
-            return formatted
+            return output
         except Exception as e:
             error_msg = f"Kvasar API Error: {str(e)}"
             logger.error(error_msg)
