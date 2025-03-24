@@ -497,7 +497,42 @@ Example:
         return final_state.get('output', "No output generated")
 
 
-
+    def _json_to_markdown(json_data):
+        """
+        Converts a JSON object or JSON string into a Markdown representation.
+        
+        Args:
+        - json_data (dict or str): The JSON object or string to be converted.
+        
+        Returns:
+        - str: The Markdown representation of the JSON data.
+        """
+        # If the input is a JSON string, parse it into a dictionary
+        if isinstance(json_data, str):
+            try:
+                json_data = json.loads(json_data)
+            except json.JSONDecodeError:
+                return "Invalid JSON string"
+        
+        # A recursive function to traverse the JSON and convert it to Markdown
+        def recurse_json_to_markdown(data, level=1):
+            markdown = ""
+            indent = "  " * level  # Indentation based on the level of recursion
+            
+            if isinstance(data, dict):  # If it's a dictionary
+                for key, value in data.items():
+                    markdown += f"{indent}- **{key}**:\n"
+                    markdown += recurse_json_to_markdown(value, level + 1)  # Recurse for the value
+            elif isinstance(data, list):  # If it's a list
+                for item in data:
+                    markdown += f"{indent}- {recurse_json_to_markdown(item, level + 1)}"
+            else:  # If it's a primitive value
+                markdown += f"{indent}{data}\n"
+            
+            return markdown
+        
+        # Start the recursion from the root of the JSON
+        return recurse_json_to_markdown(json_data, level=1)
 
 
     # ----------------------------
