@@ -394,7 +394,7 @@ Example:
                 model=self.valves.deepseek_model,
                 messages=[
                     {"role": "system", "content": "You are an assistant providing debugging tips. Always respond in JSON format with a 'suggestions' key."},
-                    {"role": "user", "content": f"I encountered this error: {error_message}\nHow can I resolve it? Provide suggestions in JSON format."}
+                    {"role": "user", "content": f"I encountered this error: {error_message}\nHow can I resolve it? Provide suggestions in json format."}
                 ],
                 temperature=0.2,
                 response_format={"type": "json_object"}
