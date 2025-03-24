@@ -194,7 +194,11 @@ class Pipeline:
                 raise ValueError(f"Unsupported method: {method}")
 
             response.raise_for_status()
-            return response.json()
+            if response.text:
+                return response.json()
+            else:
+                return {"error": "Empty response from server"}
+            # return response.json()
         except requests.exceptions.HTTPError as e:
             return {"error": str(e), "status_code": response.status_code} if response else {"error": str(e)}
 
