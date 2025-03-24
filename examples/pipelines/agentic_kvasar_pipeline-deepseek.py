@@ -141,7 +141,7 @@ class Pipeline:
                     raise RuntimeError("Critical: Failed to fetch initial API spec")
                 
     def spec_needs_refresh(self) -> bool:
-        if not self.spec_last_fetched:
+        if not self.spec_last_fetched or  len(self.openapi_spec.endpoints) == 0:
             return True
         delta = datetime.now() - self.spec_last_fetched
         return delta.total_seconds() > self.valves.cache_spec_minutes * 60
