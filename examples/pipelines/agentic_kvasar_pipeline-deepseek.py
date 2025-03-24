@@ -291,7 +291,7 @@ Example:
         if not self._validate_api_call(api_call):
             return PipelineState(
                  **state.model_dump(exclude={'error', 'next_state'}),
-                error=f"Invalid API call structure: {result['error']}",
+                error="Invalid API call structure",
                 next_state="handle_error"
             )
 
