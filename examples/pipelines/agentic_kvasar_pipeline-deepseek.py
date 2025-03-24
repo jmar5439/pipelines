@@ -423,6 +423,17 @@ Example:
         except Exception as deepseek_error:
             suggestions = f"Failed to get suggestions from DeepSeek: {str(deepseek_error)}"
         
+        # Format suggestions if it's a list of suggestion objects, otherwise leave as is.
+        if isinstance(suggestions, list):
+            formatted_suggestions = "\n".join(
+                f"{index + 1}. **Suggestion:** {item.get('suggestion', 'N/A')}\n   **Action:** {item.get('action', 'No action provided.')}"
+                for index, item in enumerate(suggestions)
+            )
+        else:
+            # If suggestions_data is a string or not a list, use it as is.
+            formatted_suggestions = suggestions
+
+        
         return PipelineState(
             **state.model_dump(exclude={'output', 'next_state', 'error'}),
             output=f"## Error Occurred\n```\n{error_message}\n```\n\nSuggestions:\n```\n{suggestions}\n```",
