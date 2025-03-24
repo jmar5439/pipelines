@@ -401,15 +401,11 @@ Example:
             )
             self.log(f'API Response 1: {raw_suggestion_response}')
             # First check if response structure is valid
-            if isinstance(raw_suggestion_response, dict):
+            if isinstance(raw_suggestion_response, list):  # Check if it's a JSON array
                 try:
-                    # Extract JSON string from message content
-                    content_str = raw_suggestion_response
-                    
-                    # Parse the JSON string to Python dict
-                    import json  # Make sure to import json at the top of your file
-                    content_dict = json.loads(content_str)
-                    
+                    # Assuming the first element contains the JSON string or needed data
+                    content_dict = raw_suggestion_response[0] if raw_suggestion_response else {}
+
                     # Extract suggestions from parsed JSON
                     suggestions = content_dict.get('suggestions', "No suggestions provided.")
                 except (KeyError, IndexError, json.JSONDecodeError) as parse_error:
@@ -417,7 +413,7 @@ Example:
                 except Exception as e:
                     suggestions = f"Unexpected error: {str(e)}"
             else:
-                suggestions = "Response format invalid"
+                suggestions = "Invalid response format, expected a JSON array."
                 
         except Exception as deepseek_error:
             suggestions = f"Failed to get suggestions from DeepSeek: {str(deepseek_error)}"
