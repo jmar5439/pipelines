@@ -393,14 +393,18 @@ Example:
             suggestion_response = self.deepseek_client.chat_completion(
                 model=self.valves.deepseek_model,
                 messages=[
-                    {"role": "system", "content": "You are an assistant providing debugging tips."},
-                    {"role": "user", "content": f"I encountered this error: {error_message}\nHow can I resolve it?"}
+                    {"role": "system", "content": "You are an assistant providing debugging tips. Always respond in JSON format with a 'suggestions' key."},
+                    {"role": "user", "content": f"I encountered this error: {error_message}\nHow can I resolve it? Provide suggestions in JSON format."}
                 ],
                 temperature=0.2,
                 response_format={"type": "json_object"}
             )
             # Extract suggestions from the DeepSeek response
-            suggestions = suggestion_response.get("suggestions", "No suggestions provided.")
+            # Parse JSON response safely
+            if isinstance(suggestion_response, dict):
+                suggestions = suggestion_response.get("suggestions", "No suggestions provided.")
+            else:
+                suggestions = "Response format invalid"
         except Exception as deepseek_error:
             suggestions = f"Failed to get suggestions from DeepSeek: {str(deepseek_error)}"
         
