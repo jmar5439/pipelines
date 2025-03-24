@@ -352,13 +352,13 @@ Example:
             }
 
             # Add parameters if present
-            if state.api_call.get('parameters'):
-                formatted["elements"].append({
-                    "type": "code_block",
-                    "title": "Request Parameters",
-                    "content": json.dumps(state.api_call['parameters'], indent=2),
-                    "language": "json"
-                })
+            #if state.api_call.get('parameters'):
+            #    formatted["elements"].append({
+            #        "type": "code_block",
+            #        "title": "Request Parameters",
+            #        "content": json.dumps(state.api_call['parameters'], indent=2),
+            #        "language": "json"
+            #    })
 
             # Add response data with dynamic formatting
             response_content = {
@@ -369,11 +369,11 @@ Example:
             }
 
             # If the result is a list, add metadata
-            if isinstance(state.result, list):
-                response_content["metadata"] = {
-                    "item_count": len(state.result),
-                    "summary_fields": list(state.result[0].keys()) if state.result else []
-                }
+            #if isinstance(state.result, list):
+            #    response_content["metadata"] = {
+            #        "item_count": len(state.result),
+            #        "summary_fields": list(state.result[0].keys()) if state.result else []
+            #    }
             
             formatted["elements"].append(response_content)
 
